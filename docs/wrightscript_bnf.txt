@@ -1,0 +1,49 @@
+program = {{ whitespace }, (  expression, [ white space plus, comment ]
+             | comment
+             | multiline comment
+             function definition
+             ), line feed, optional space } ;
+comment = "#", all characters - line feed ;
+multiline comment = "/*", all characters, "*/" ;
+
+expression = label | function call | implicit textbox | 'resume' | goto | conditional | 'exit' ;
+
+conditional = 'is', white space plus,
+              argument, white space plus,
+              argument, white space plus,
+              function call 
+
+label = 'label', white space plus, identifier, [white space plus, identifier] ;
+goto = 'goto', white space plus, identifier ;
+
+function call = identifier, {white space plus, argument} ;
+argument = identifier | string | number | boolean | "(" { white space }, function call, { white space }, ")" ;
+
+implicit textbox = string ;
+
+function definition = 'def', white space plus,
+                      [ 'global' ], white space plus,
+                      identifier, white space plus,
+                      {identifier, white space plus},
+                      line feed, {optional space},
+                      { { whitespace }, ( expression | comment | multiline comment | 'return', white space plus, argument ), line feed, optional space },
+                      'enddef'
+
+string = '"' , { all characters - '"' }, '"' ;
+boolean = 'true' | 'false' ;
+identifier = identifier character, { identifier character | digit } ;
+number = [ "-" ], digit, { digit } ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+identifier character = "A" | "B" | "C" | "D" | "E" | "F" | "G"
+                     | "H" | "I" | "J" | "K" | "L" | "M" | "N"
+                     | "O" | "P" | "Q" | "R" | "S" | "T" | "U"
+                     | "V" | "W" | "X" | "Y" | "Z" 
+                     | "a" | "b" | "c" | "d" | "e" | "f" | "g"
+                     | "h" | "i" | "j" | "k" | "l" | "m" | "n"
+                     | "o" | "p" | "q" | "r" | "s" | "t" | "u"
+                     | "v" | "w" | "x" | "y" | "z" | "_" | "." ;
+optional space = {line feed | white space} ;
+white space plus = white space, {white space} ;
+white space = ? white space characters without line feed ? ;
+line feed = ? line feed characters ? ;
+all characters = ? all visible characters ? ;
