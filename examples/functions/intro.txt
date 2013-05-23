@@ -1,0 +1,17 @@
+# Example of proposed new wrightscript function extension. Shows also the use of
+# the function call as argument syntax.
+
+set x 50
+
+/* number -> number 
+def addx y
+  return (sum x y)
+enddef
+
+set x 0
+set result (addx 5)
+"The result is {val result}."
+
+/* The result will be 5 if dynamic scoping is implemented or 55 with static scoping.
+In the last case a closure with all already set variables is closed over the function.
+*/ 
