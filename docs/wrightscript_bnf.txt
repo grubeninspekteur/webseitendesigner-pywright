@@ -26,7 +26,7 @@ function definition = 'def', white space plus,
                       identifier, white space plus,
                       {identifier, white space plus},
                       line feed, {optional space},
-                      { { whitespace }, ( expression | comment | multiline comment | 'return', white space plus, argument ), line feed, optional space },
+                      { { whitespace }, ( expression - goto - label | comment | multiline comment | 'return', white space plus, argument ), line feed, optional space },
                       'enddef'
 
 string = '"' , { all characters - '"' }, '"' ;
@@ -41,7 +41,7 @@ identifier character = "A" | "B" | "C" | "D" | "E" | "F" | "G"
                      | "a" | "b" | "c" | "d" | "e" | "f" | "g"
                      | "h" | "i" | "j" | "k" | "l" | "m" | "n"
                      | "o" | "p" | "q" | "r" | "s" | "t" | "u"
-                     | "v" | "w" | "x" | "y" | "z" | "_" | "." ;
+                     | "v" | "w" | "x" | "y" | "z" | "_" ;
 optional space = {line feed | white space} ;
 white space plus = white space, {white space} ;
 white space = ? white space characters without line feed ? ;
