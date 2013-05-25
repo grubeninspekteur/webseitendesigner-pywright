@@ -104,8 +104,13 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parseAsValueList(input), [True, False])
         
     def testInvalidIdentifier(self):
-        """An Identifier can't have a number as the first character."""
+        """Tests some invalid Identifier names."""
         self.assertRaises(ParseException, self.parseAsTypeList, "42_invalid")
+        self.assertRaises(ParseException, self.parseAsTypeList, "..dotty")
+        
+    def testIdentifier(self):
+        """Tests some valid Identifier names."""
+        self.assertEqual(self.parseAsTypeList('sub.part valid_name __init__ double..'), ['IDENTIFIER' for _ in range(0, 4)])
         
     def testParenthesis(self):
         """A call to print with the result of a math expression."""
