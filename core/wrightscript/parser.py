@@ -30,7 +30,7 @@ def p_statements_multiple(p):
     p[0].add(node, lineno)
 
 def p_statements_single(p):
-    'statements : statement'
+    'statements : statement optspace'
     ss = StatementSequence()
     (node, lineno) = p[1]
     ss.add(node, lineno)
@@ -61,11 +61,11 @@ def p_statement_goto(p):
     p[0] = (Goto(Identifier(p[2])), p.lineno(1))
     
 def p_expression_conditional(p):
-    'statement : IS arg thenexpr elseexpr'
+    'expression : IS arg thenexpr elseexpr'
     p[0] = (Is(p[2], p[3], p[4]), p.lineno(1))
     
 def p_expression_exit(p):
-    'statement : EXIT'
+    'expression : EXIT'
     p[0] = (Exit(), p.lineno(1))
     
 def p_statement_fundef(p):
@@ -83,14 +83,14 @@ def p_params(p):
     p[0] = paramlist
 
 def p_expressions_single(p):
-    'expressions : optspace expression optspace'
+    'expressions : expression'
     ss = StatementSequence()
     (node, lineno) = p[1]
     ss.add(node, lineno)
     p[0] = ss
 
 def p_expressions_multiple(p):
-    'expressions : expressions NEWLINE optspace expression'
+    'expressions : expressions NEWLINE expression'
     (node, lineno) = p[3]
     p[0] = p[1] # reuse statement sequence
     p[0].add(node, lineno)
@@ -176,7 +176,10 @@ class SyntaxError():
         return self._token
     
     def __repr__(self):
-        return 'Syntax Error: Unexpected ' + repr(self._token.type) + ' at line ' + repr(self._token.lineno)
+        if self._token is None:
+            return 'Unexpected end of file!'
+        else:
+            return 'Syntax Error: Unexpected ' + str(self._token.type) + ' ' + repr(self._token.value) + ' at line ' + repr(self._token.lineno)
 
 errors = list()
 
@@ -194,10 +197,10 @@ _parser = yacc.yacc()
 def resetErrors():
     errors = list()
 
-def parse(script):
+def parse(script, debug=False):
     '''String => StatementSequence
     
     Parses the given script and returns the
     resulting abstract syntax tree.'''
     resetErrors()
-    return _parser.parse(script)
+    return _parser.parse(script, debug=debug)

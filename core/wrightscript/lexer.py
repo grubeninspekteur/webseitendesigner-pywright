@@ -81,7 +81,7 @@ def t_BOOLEAN(t):
     return t
 
 def t_IDENTIFIER(t):
-    r'[a-zA-Z_][a-zA-Z0-9]*'
+    r'[a-zA-Z_][a-zA-Z0-9_.]*'
     t.type = reserved.get(t.value, 'IDENTIFIER') # as in PLY example - reduces regExpressions
     return t
 
