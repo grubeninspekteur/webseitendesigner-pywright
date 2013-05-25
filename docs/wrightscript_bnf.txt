@@ -10,8 +10,7 @@ expression = label | function call | implicit textbox | 'resume' | goto | condit
 
 conditional = 'is', white space plus,
               argument, white space plus,
-              argument, white space plus,
-              function call 
+              (goto | function call), {white space plus, 'else', (goto | function call)} 
 
 label = 'label', white space plus, identifier, [white space plus, identifier] ;
 goto = 'goto', white space plus, identifier ;
@@ -22,7 +21,6 @@ argument = identifier | string | number | boolean | "(" { white space }, functio
 implicit textbox = string ;
 
 function definition = 'def', white space plus,
-                      [ 'global' ], white space plus,
                       identifier, white space plus,
                       {identifier, white space plus},
                       line feed, {optional space},

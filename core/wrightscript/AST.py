@@ -2,6 +2,7 @@
 These classes are used for building an abstract syntax tree of Wrightscript.
 '''
 
+
 # Exceptions
 class StatementNoOutOfBoundsException:
     def __init__(self, no):
@@ -12,6 +13,86 @@ class StatementNoOutOfBoundsException:
 
 class Node(): pass
 
+##
+# A named entity.
+class Identifier(Node):
+    def __init__(self, name):
+        self._name = name
+    
+    def name(self):
+        return self._name
+    
+    def __repr__(self):
+        return self._name
+
+##
+# The literal types are also defined as nodes as we may want to
+# redefine the type conversion rules. For now, type conversion
+# follows Python's rules.
+##
+
+##
+# A Boolean value (true or false).
+class Boolean(Node):
+    ##
+    # @param value Boolean
+    def __init__(self, value):
+        self._value = bool(value)
+    
+    def __bool__(self):
+        return self._value
+    
+    def __str__(self):
+        return str(self._value)
+    
+    def __int__(self):
+        return int(self._value)
+    
+    def __repr__(self):
+        return 'Boolean(' + str(self._value) + ')'
+
+##
+# A Number. Currently only positive integers are allowed.
+class Number(Node):
+    ##
+    # @param value A positive Integer
+    def __init__(self, value):
+        assert(value >= 0)
+        self._value = int(value)
+        
+    def __bool__(self):
+        return bool(self._value)
+    
+    def __str__(self):
+        return str(self._value)
+    
+    def __int__(self):
+        return self._value
+    
+    def __repr__(self):
+        return 'Number(' + str(self._value) + ')'
+
+
+##
+# The AST representation of a String.
+class String(Node):
+    ##
+    # @param value A string
+    def __init__(self, value):
+        self._value = str(value)
+        
+    def __bool__(self):
+        return bool(self._value)
+    
+    def __str__(self):
+        return self._value
+    
+    def __int__(self):
+        return int(self._value)
+    
+    def __repr__(self):
+        return 'String("' + self._value + '")'
+    
 ##
 # Holds the statement sequence as a list.
 # 
@@ -26,7 +107,7 @@ class StatementSequence(Node):
     # @param node The AST node to add to the sequence.
     # @param lineno The line number.
     def add(self, node, lineno):
-        self._statements.add((node, lineno))
+        self._statements.append((node, lineno))
         
     ##
     # Rewinds the internal statement pointer.
@@ -46,38 +127,58 @@ class StatementSequence(Node):
             return self._statements(self._pos)
     
     ##
-    # Returns the current position of the instruction counter.
+    # Returns the current statement. The usage
+    # of this is discouraged, better use next.
+    #
+    # @return A tuple (statement, lineno)
+    def current(self):
+        if self._pos >= len(self._statements):
+            return None
+        else:
+            return self._statements(self._pos)    
+    ##
+    # Returns the current position of the instruction counter,
+    # that is, the position of the statement returned by next.
     def pos(self):
         return self._pos
     
     ##
     # Moves the instruction pointer to the given position. Does not
-    # return the next statement.
+    # return the next statement. Note that when executing next, the
+    # statement immediately following the given position is returned.
+    # As goto statements usually point
     # @param The position to go to. Must be positive and inside the sequence bounds. 
     def goto(self, pos):
         if pos < 0 or pos >= len(self._statements):
             raise StatementNoOutOfBoundsException(pos)
         self._pos = pos
+        
+    def __repr__(self):
+        return ';\n'.join(repr(lineno) + ': ' + repr(stmt) for (stmt, lineno) in self._statements)
+            
 
 ##
 # A label is a named position in the code. They can be jumped to
 # in goto expressions. The label identifier should be bound to
-# the position in the StatementSequence during the semantic parsing
-# step. When interpreted, a label does nothing.
+# the label's position in the StatementSequence during the semantic
+# parsing step. When interpreted, a label does nothing.
 class Label(Node):
     
     ##
-    # @param identifier String
+    # @param identifier Identifier of this label
     def __init__(self, identifier):
         self._name = identifier
     
     ##
-    # Returns the identifier of this label as a string.
+    # Returns the identifier of this label.
     def name(self):
             return self._name
+        
+    def __repr__(self):
+        return 'LABEL ' + repr(self._name)
 
 ##
-# Resume jumps to the last position before a goto statement.
+# Resume jumps to the last position of a goto statement.
 # Unlike functions, gotos can't be stacked, e.g.
 #
 # goto c
@@ -89,5 +190,127 @@ class Label(Node):
 # label c
 # goto b
 # 
-# will result in an infinite loop.
-class Resume(Node): pass
+# will result in an infinite loop (the resume under label b will jump to itself).
+#
+# You should jump with StatementSequence::goto to the goto's
+# position, because StatementSequence::next will return the
+# statement immediately following it.
+class Resume(Node):
+    def __rerpr__(self):
+        return 'RESUME'
+
+##
+# Goto points to a label identifier. When executed, the return
+# adress, used for resume statements, should be set to the goto
+# statement's position. Then the instruction counter of StatementSequence
+# shall be set to the value of the label's identifier.
+class Goto(Node):
+    
+    ##
+    # @param indentifier Identifier The target Identifier
+    def __init__(self, identifier):
+        self._target = identifier
+    
+    ##
+    # Returns the target identifier of the goto statement.
+    # @return Identifier
+    def target(self):
+        return self._target
+    
+    def __repr__(self):
+        return 'GOTO ' + repr(self._target)
+
+##
+# Is tests an argument (which may be the result of a function call)
+# and executes thenExpr if it is true, otherwise elseExpr.
+class Is(Node):
+    
+    ##
+    # @param testExpr The Node that should be tested for it's boolean value.
+    # @param thenExpr The Node that will be executed if testExpr evaluates to true.
+    # @param elseExpr The Node that will be executed if testExpr evaluates to false. May be None.
+    def __init__(self, testExpr, thenExpr, elseExpr):
+        self._testExpr = testExpr
+        self._thenExpr = thenExpr
+        self._elseExpr = elseExpr
+        
+    def testExpr(self):
+        return self._testExpr
+    
+    def thenExpr(self):
+        return self._thenExpr
+    
+    def elseExpr(self):
+        return self._elseExpr
+    
+    def hasElseExpr(self):
+        return self._elseExpr != None
+    
+    def __repr__(self):
+        str = 'IF ' + repr(self._testExpr) + ' THEN ' + repr(self._thenExpr)
+        if self.hasElseExpr():
+            str = str + ' ELSE ' + repr(self._elseExpr)
+
+##
+# A Call calls a function with the given arguments.  
+class Call(Node):
+    ##
+    # @param funExpr Function expression or Identifier of it
+    # @param args A list of function arguments
+    def __init__(self, funExpr, args=[]):
+        self._funExpr = funExpr
+        self._args = args
+        
+    def funExpr(self):
+        return self._funExpr
+    
+    def args(self):
+        return self._args
+    
+    def __repr__(self):
+        return repr(self._funExpr) + '(' + ', '.join(repr(arg) for arg in self._args) + ')'
+
+##
+# A function definition consists of a name, a list of
+# parameter identifiers and a StatementSequence.
+# Parameters will shadow variables outside
+# of the function's scope. 
+class Function(Node):
+    ##
+    # @param name Identifier
+    # @param parameters Listof(Identifier)
+    # @param body StatementSequence
+    def __init__(self, name, parameters, body):
+        self._name = name
+        self._parameters = parameters
+        self._body = body
+        
+    def name(self):
+        return self._name
+    
+    def parameters(self):
+        return self._parameters
+    
+    def body(self):
+        return self._body
+    
+    def __repr__(self):
+        return 'DEF ' + repr(self._name) + '(' + ', '.join(repr(param) for param in self._parameters) + ') {\n' + repr(self._body) + '\n}'
+
+##
+# Stops execution of the current Script.
+class Exit(Node):
+    def __repr__(self):
+        return 'EXIT'
+    
+##
+# Jumps out of a function.
+class Return(Node):
+    def __init__(self, value):
+        self._value = value
+    
+    def value(self):
+        return self._value
+    
+    def __repr__(self):
+        return 'RETURN ' + repr(self._value)

@@ -256,6 +256,7 @@ class Lexer:
         self.lexdata = s
         self.lexpos = 0
         self.lexlen = len(s)
+        self.lineno = 1
 
     # ------------------------------------------------------------
     # begin() - Changes the lexing state

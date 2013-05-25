@@ -22,11 +22,12 @@ class ParseException:
         self.character = character
         
     def __repr__(self):
-        return "Parse Error: Unexpected character '" + self.character + "' in line " + self.line
+        return "Unexpected character '" + str(self.character) + "' in line " + repr(self.line)
 
 # reserved words
 reserved = {
    'is' : 'IS',
+   'else' : 'ELSE',
    'label' : 'LABEL',
    'goto' : 'GOTO',
    'resume' : 'RESUME',
@@ -56,16 +57,19 @@ tokens = [
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_ignore_COMMENT = r'\#.*'
-t_ignore_MULTCOMMENT = r'\/\*(.|\s)*\*\/'
+
+def t_MULTCOMMENT(t):
+    r'\/\*(.|\s)*\*\/'
+    t.lexer.lineno += t.value.count('\n')
+    # No return value. Token discarded
 
 def t_STRING(t):
-    r'"((.|\s)*)"'
+    r'"(\\.|[^\"])*"'
     # count line numbers
     # TODO the lexer should be able to do this for me - we shouldn't parse the string twice!
     t.lexer.lineno += t.value.count('\n')
-    # drop the quotes
-    # TODO the lexer should be able to do this as well (hencefore the double parentheses above) but how?
-    t.value = t.value[1:-1]
+    # TODO regexp should be able to cut the quotes and replace the escape chars - but how? 
+    t.value = t.value[1:-1].replace(r'\"', r'"')
     return t
 
 def t_BOOLEAN(t):
@@ -82,7 +86,8 @@ def t_IDENTIFIER(t):
     return t
 
 def t_NUMBER(t):
-    r'\d+'
+    r'\d+(?!\w)'
+    # Regexpr searches for a number not folowed by letter or _ to reject invalid identifiers
     t.value = int(t.value)
     return t
 
