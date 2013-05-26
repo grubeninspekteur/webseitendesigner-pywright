@@ -118,14 +118,15 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parseAsTypeList(input), ['IDENTIFIER', 'LPAREN', 'IDENTIFIER', 'NUMBER', 'NUMBER', 'RPAREN'])
         
     def testIgnoreComments(self):
-        """Checks that single line and multiline comments are ignored."""
+        """Checks that single line and multiline comments are ignored. Also all line breaks shall be reduced to one."""
         input = '''
         # This is a single line comment
         foo
+        
         /* Multiline
         Comment */
         bar'''
-        self.assertEqual(self.parseAsTypeList(input), ['NEWLINE', 'NEWLINE', 'IDENTIFIER', 'NEWLINE', 'NEWLINE', 'IDENTIFIER'])
+        self.assertEqual(self.parseAsTypeList(input), ['NEWLINE', 'IDENTIFIER', 'NEWLINE', 'IDENTIFIER'])
 
     def testLineNumbers(self):
         """Checks that line numbers are reset by the lexer for new input.

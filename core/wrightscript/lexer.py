@@ -56,10 +56,13 @@ tokens = [
 # Simple regular expressions
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
-t_ignore_COMMENT = r'\#.*'
+
+def t_COMMENT(t):
+    r'(\s*)\#.*'
+    t.lexer.lineno += t.value.count('\n')
 
 def t_MULTCOMMENT(t):
-    r'\/\*(.|\s)*\*\/'
+    r'(\s*)/\*(.|[\r\n])*?\*/'
     t.lexer.lineno += t.value.count('\n')
     # No return value. Token discarded
 
