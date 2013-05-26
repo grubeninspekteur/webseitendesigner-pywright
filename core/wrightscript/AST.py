@@ -11,7 +11,9 @@ class StatementNoOutOfBoundsException:
     def __repr__(self):
         return "Statement " + self._no + " does not exist" 
 
-class Node(): pass
+class Node():
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
 ##
 # A named entity.
@@ -105,8 +107,8 @@ class StatementSequence(Node):
     ##
     # Adds a statement to the sequence.
     # @param node The AST node to add to the sequence.
-    # @param lineno The line number.
-    def add(self, node, lineno):
+    # @param lineno The line number. May be omitted for testing purpose.
+    def add(self, node, lineno=-1):
         self._statements.append((node, lineno))
         
     ##
@@ -152,9 +154,28 @@ class StatementSequence(Node):
         if pos < 0 or pos >= len(self._statements):
             raise StatementNoOutOfBoundsException(pos)
         self._pos = pos
+    
+    ##
+    # Returns a dictionary of the statements. It contains
+    # tuples of (statement, lineno).
+    def asList(self):
+        return self._statements
         
     def __repr__(self):
-        return ';\n'.join(repr(lineno) + ': ' + repr(stmt) for (stmt, lineno) in self._statements)
+        min_lineno_width = len(str(max(lineno for (_, lineno) in self._statements)))
+        fmt = "%" + str(min_lineno_width) + "d"
+        return '\n'.join((fmt % lineno) + ': ' + repr(stmt) for (stmt, lineno) in self._statements)
+    
+    def __eq__(self, other):
+        if isinstance(other, StatementSequence) == False:
+            return False
+        
+        my_statements = [statement for (statement, _) in self._statements]
+        other_statements = [statement for (statement, _) in other.asList()]
+        
+        return my_statements == other_statements
+        
+        
             
 
 ##
@@ -196,7 +217,7 @@ class Label(Node):
 # position, because StatementSequence::next will return the
 # statement immediately following it.
 class Resume(Node):
-    def __rerpr__(self):
+    def __repr__(self):
         return 'RESUME'
 
 ##
