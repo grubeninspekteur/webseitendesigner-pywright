@@ -16,7 +16,9 @@ label = 'label', white space plus, identifier, [white space plus, identifier] ;
 goto = 'goto', white space plus, identifier ;
 
 function call = identifier, {white space plus, argument} ;
-argument = identifier | string | number | boolean | "(" { white space }, function call, { white space }, ")" ;
+argument = identifier | literal | "(" { white space }, function call, { white space }, ")" | list ;
+
+list = "[", (empty |{argument, ","}, argument), "]"
 
 implicit textbox = string ;
 
@@ -27,6 +29,7 @@ function definition = 'def', white space plus,
                       { { whitespace }, ( expression - goto - label | comment | multiline comment | 'return', white space plus, argument ), line feed, optional space },
                       'enddef'
 
+literal = string | number | boolean
 string = '"' , { all characters - '"' }, '"' ;
 boolean = 'true' | 'false' ;
 identifier = identifier character, { identifier character | digit } ;
