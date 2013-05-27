@@ -49,6 +49,7 @@ tokens = [
     'LBRACKET',
     'RBRACKET',
     'COMMA',
+    'ASSIGN',
     'COMMENT',
     'MULTCOMMENT'
           ] + list(reserved.values())
@@ -61,6 +62,7 @@ t_RPAREN = r'\)'
 t_LBRACKET = r'\['
 t_RBRACKET = r'\]'
 t_COMMA = r','
+t_ASSIGN = r':='
 
 def t_COMMENT(t):
     r'(\s*)\#.*'

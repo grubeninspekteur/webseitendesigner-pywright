@@ -174,6 +174,23 @@ class TestParserSyntax(unittest.TestCase):
         self.parser.parse('fun [is (lower a b) a]')
         self.assertTrue(self.parser.hasErrors(), "Conditionals are not allowed inside lists")
         
+    def testAssignment(self):
+        '''Tests a simple assignment operation.'''
+        ss = StatementSequence()
+        ss.add(Assignment(Identifier('var'), Number(5)))
+        self.assertEqual(self.parser.parse('var := 5'), ss)
+        
+    def testFailAssignment(self):
+        '''Tests several failing assignments.'''
+        self.parser.parse('5 := 5')
+        self.assertTrue(self.parser.hasErrors())
+        self.parser.parse('var :=')
+        self.assertTrue(self.parser.hasErrors())
+        self.parser.parse('var :=\n5')
+        self.assertTrue(self.parser.hasErrors())
+        self.parser.parse('var := fundef lambda x\nreturn x\nenddef')
+        self.assertTrue(self.parser.hasErrors(), "We currently do not support first class functions.")
+        
         
         
     

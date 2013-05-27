@@ -6,7 +6,9 @@ program = {{ whitespace }, (  expression, [ white space plus, comment ]
 comment = "#", all characters - line feed ;
 multiline comment = "/*", all characters, "*/" ;
 
-expression = label | function call | implicit textbox | 'resume' | goto | conditional | 'exit' ;
+expression = label | function call | implicit textbox | 'resume' | goto | conditional | 'exit' | assignment ;
+
+assignemnt = identifier { white space } ':=' { white space } argument
 
 conditional = 'is', white space plus,
               argument, white space plus,
