@@ -26,13 +26,12 @@ class ParseException:
 
 # reserved words
 reserved = {
-   'is' : 'IS',
+   'if' : 'IF',
    'else' : 'ELSE',
    'label' : 'LABEL',
    'goto' : 'GOTO',
    'resume' : 'RESUME',
    'exit' : 'EXIT',
-   'is' : 'IS',
    'def' : 'DEF',
    'enddef' : 'ENDDEF',
    'return' : 'RETURN'
