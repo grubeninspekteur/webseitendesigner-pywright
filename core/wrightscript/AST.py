@@ -246,9 +246,9 @@ class Goto(Node):
         return 'GOTO ' + repr(self._target)
 
 ##
-# Is tests an argument (which may be the result of a function call)
+# If tests an argument (which may be the result of a function call)
 # and executes thenExpr if it is true, otherwise elseExpr.
-class Is(Node):
+class If(Node):
     
     ##
     # @param testExpr The Node that should be tested for it's boolean value.
@@ -275,6 +275,7 @@ class Is(Node):
         str = 'IF ' + repr(self._testExpr) + ' THEN ' + repr(self._thenExpr)
         if self.hasElseExpr():
             str = str + ' ELSE ' + repr(self._elseExpr)
+        return str
 
 ##
 # A Call calls a function with the given arguments.  

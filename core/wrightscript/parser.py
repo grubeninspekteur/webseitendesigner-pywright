@@ -92,8 +92,8 @@ class Parser():
             p[0] = (Goto(Identifier(p[2])), p.lineno(1))
             
         def p_expression_conditional(p):
-            'expression : IS arg thenexpr elseexpr'
-            p[0] = (Is(p[2], p[3], p[4]), p.lineno(1))
+            'expression : IF arg thenexpr elseexpr'
+            p[0] = (If(p[2], p[3], p[4]), p.lineno(1))
             
         def p_expression_exit(p):
             'expression : EXIT'

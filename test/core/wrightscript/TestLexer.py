@@ -19,7 +19,7 @@ class Test(unittest.TestCase):
         input = '''
         label
         resume
-        is else
+        if else
         goto
         exit
         def
@@ -34,7 +34,7 @@ class Test(unittest.TestCase):
                      'NEWLINE',
                      'RESUME',
                      'NEWLINE',
-                     'IS',
+                     'IF',
                      'ELSE',
                      'NEWLINE',
                      'GOTO',

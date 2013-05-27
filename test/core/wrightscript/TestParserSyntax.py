@@ -3,18 +3,19 @@ Tests the syntactical aspect of the parser that creates an Abstract Syntax
 Tree from Wrightscript.
 '''
 import unittest
+import os
 from core.wrightscript.parser import Parser, SyntaxError
 from core.wrightscript.AST import *
 from core.functional import forall
 
-class TestParser(unittest.TestCase):
+class TestParserSyntax(unittest.TestCase):
 
     def setUp(self):
         self.parser = Parser()
 
     def _getScriptFromFile(self, scriptname):
         '''Helper function that retrieves a testfile from the samples directory.'''
-        f = open('samples/' + scriptname + '.ws', 'r')
+        f = open(os.path.dirname(os.path.abspath(__file__)) + '/samples/' + scriptname + '.ws', 'r')
         str = f.read()
         f.close()
         return str
@@ -65,6 +66,29 @@ class TestParser(unittest.TestCase):
         funstatements.add(Return(Call(Identifier('add'), [Number(1), Identifier('x')])))
         
         self.assertEqual(self._parsed("fundef"), ss)
+        
+    def testConditionals(self):
+        '''Tests several conditional expressions.'''
+        ss = StatementSequence()
+        ss.add(If(Boolean(True), self._goto("step1"), None))
+        ss.add(self._textbox("This should never be displayed"))
+        ss.add(self._label("step1"))
+        ss.add(If(Boolean(False),
+                  Call(Identifier("noop"), []),
+                  self._goto("step2")))
+        ss.add(self._textbox("This should never be displayed"))
+        ss.add(self._label("step2"))
+        ss.add(If(Boolean(False), Goto(Identifier("fail")), None))
+        ss.add(self._goto("success"))
+        ss.add(self._label("fail"))
+        ss.add(self._textbox("This should never be displayed"))
+        ss.add(self._label("success"))
+        ss.add(self._textbox("Success"))
+        
+        parsed = self._parsed("conditional")
+        
+        self.assertFalse(self.parser.hasErrors())
+        self.assertEqual(parsed, ss)
         
     def testFailReturnOutsideFundef(self):
         '''A return statement should only be allowed inside a function definition.'''
