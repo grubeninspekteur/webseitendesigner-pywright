@@ -47,6 +47,9 @@ tokens = [
     'NEWLINE',
     'LPAREN',
     'RPAREN',
+    'LBRACKET',
+    'RBRACKET',
+    'COMMA',
     'COMMENT',
     'MULTCOMMENT'
           ] + list(reserved.values())
@@ -56,6 +59,9 @@ tokens = [
 # Simple regular expressions
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
+t_LBRACKET = r'\['
+t_RBRACKET = r'\]'
+t_COMMA = r','
 
 def t_COMMENT(t):
     r'(\s*)\#.*'

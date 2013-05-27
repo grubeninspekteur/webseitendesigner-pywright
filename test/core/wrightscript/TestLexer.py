@@ -143,6 +143,11 @@ class Test(unittest.TestCase):
         input = 'test #comment\n 5'
         self.assertEqual(self.parseAsTypeList(input), ['IDENTIFIER', 'NEWLINE', 'NUMBER'])
         
+    def testLists(self):
+        """Tests support for list syntax."""
+        input = '[test, "test"]'
+        self.assertEqual(self.parseAsTypeList(input), ['LBRACKET', 'IDENTIFIER', 'COMMA', 'STRING', 'RBRACKET'])
+        
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

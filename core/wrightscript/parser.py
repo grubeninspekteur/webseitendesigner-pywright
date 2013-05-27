@@ -174,21 +174,49 @@ class Parser():
             'arg : IDENTIFIER'
             p[0] = Identifier(p[1])
             
-        def p_arg_string(p):
-            'arg : STRING'
+        def p_arg_list(p):
+            'arg : list'
+            p[0] = p[1]
+            
+            
+        def p_arg_literal(p):
+            'arg : literal'
+            p[0] = p[1]
+        
+        def p_literal_string(p):
+            'literal : STRING'
             p[0] = String(p[1])
         
-        def p_arg_number(p):
-            'arg : NUMBER'
+        def p_literal_number(p):
+            'literal : NUMBER'
             p[0] = Number(p[1])
         
-        def p_arg_boolean(p):
-            'arg : BOOLEAN'
+        def p_literal_boolean(p):
+            'literal : BOOLEAN'
             p[0] = Boolean(p[1])
         
         def p_arg_funcall(p):
             'arg : LPAREN funcall RPAREN'
             p[0] = p[2]
+        
+        def p_list_containing(p):
+            '''list : LBRACKET optspace listelems optspace RBRACKET
+                    | LBRACKET optspace listelems optspace COMMA RBRACKET'''
+            p[0] = CreateList(p[3])
+        
+        def p_list_empty(p):
+            'list : LBRACKET optspace RBRACKET'
+            p[0] = CreateList(list())
+            
+        def p_listelems_empty(p):
+            'listelems : arg'
+            p[0] = [p[1]]
+            
+        def p_listelems_listelem(p):
+            'listelems : listelems optspace COMMA optspace arg'
+            listelems = p[1]
+            listelems.append(p[5])
+            p[0] = listelems
         
         def p_optspace(p):
             '''optspace : empty

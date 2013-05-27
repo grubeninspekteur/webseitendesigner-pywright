@@ -13,6 +13,7 @@ class StatementNoOutOfBoundsException:
 
 class Node():
     def __eq__(self, other):
+        if isinstance(other, Node) == False: return False
         return self.__dict__ == other.__dict__
 
 ##
@@ -33,9 +34,12 @@ class Identifier(Node):
 # follows Python's rules.
 ##
 
+class Literal(Node):
+    pass
+
 ##
 # A Boolean value (true or false).
-class Boolean(Node):
+class Boolean(Literal):
     ##
     # @param value Boolean
     def __init__(self, value):
@@ -55,7 +59,7 @@ class Boolean(Node):
 
 ##
 # A Number. Currently only positive integers are allowed.
-class Number(Node):
+class Number(Literal):
     ##
     # @param value A positive Integer
     def __init__(self, value):
@@ -77,7 +81,7 @@ class Number(Node):
 
 ##
 # The AST representation of a String.
-class String(Node):
+class String(Literal):
     ##
     # @param value A string
     def __init__(self, value):
@@ -335,3 +339,25 @@ class Return(Node):
     
     def __repr__(self):
         return 'RETURN ' + repr(self._value)
+    
+##
+# A list over several (unevaluated) nodes. On interpretation, the list elements
+# should be evaluated immediately (like for function arguments), so
+# the following:
+#
+# x := 42
+# l := [x]
+# x := 0
+#
+# print x
+#
+# prints 42.
+class CreateList(Node):
+    def __init__(self, listOfNodes):
+        self._value = listOfNodes
+        
+    def list(self):
+        return self._value
+    
+    def __repr__(self):
+        return repr(self._value)
