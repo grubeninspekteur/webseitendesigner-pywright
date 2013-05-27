@@ -148,6 +148,14 @@ class Test(unittest.TestCase):
         input = '[test, "test"]'
         self.assertEqual(self.parseAsTypeList(input), ['LBRACKET', 'IDENTIFIER', 'COMMA', 'STRING', 'RBRACKET'])
         
+    def testAssignment(self):
+        """Tests a simple assignment syntax."""
+        input1 = 'var := 5'
+        input2 = 'var:=5'
+        typeList = ['IDENTIFIER', 'ASSIGN', 'NUMBER']
+        self.assertEqual(self.parseAsTypeList(input1), typeList)
+        self.assertEqual(self.parseAsTypeList(input2), typeList)
+        
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

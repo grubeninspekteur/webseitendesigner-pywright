@@ -362,3 +362,22 @@ class CreateList(Node):
     
     def __repr__(self):
         return repr(self._value)
+    
+##
+# An assignment assigns a variable a new value, e.g.
+#
+# x := (add x 1)
+#
+class Assignment(Node):
+    def __init__(self, identifier, value):
+        self._identifier = identifier
+        self._value = value
+        
+    def identifier(self):
+        return self._identifier
+    
+    def value(self):
+        return self._identifier
+    
+    def __repr__(self):
+        return repr(self._identifier) + ' := ' + repr(self._value)

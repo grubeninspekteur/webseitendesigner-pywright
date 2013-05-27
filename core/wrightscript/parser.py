@@ -2,7 +2,18 @@
 The parser takes a string (presumely from a file) containing Wrightscript
 and returns an abstract syntax tree (AST) of statements. It only performs
 the syntactic analysis, so don't expect functions to be extracted or label
-identifiers to be bound to positions in the StatementSequence. 
+identifiers to be bound to positions in the StatementSequence.
+
+TODO actually it is wiser to do the semantic analysis (label and function
+extraction) in this step as well. I can basically see no harm in doing so,
+as all the information required is already present. So a call to Parser::parse
+requires an Environment (defaulting to empty).
+
+Also, the AST shouldn't stay an abstract syntax tree but hold the evaluate
+code as well, saving a lot of if instanceof(...) clauses in the interp()
+function and relying completely on object delegation. However, while this
+makes the actual interp() really small, it will blow up the AST objects,
+violating seperation of concern (representing the syntax and self-evaluation).
 '''
 from ..include.ply import yacc as yacc
 from lexer import tokens
@@ -90,6 +101,10 @@ class Parser():
         def p_statement_goto(p):
             'statement : GOTO IDENTIFIER'
             p[0] = (Goto(Identifier(p[2])), p.lineno(1))
+            
+        def p_expression_assignment(p):
+            'expression : IDENTIFIER ASSIGN arg'
+            p[0] = (Assignment(Identifier(p[1]), p[3]), p.lineno(1))
             
         def p_expression_conditional(p):
             'expression : IF arg thenexpr elseexpr'
