@@ -217,11 +217,11 @@ class Parser():
         def p_list_containing(p):
             '''list : LBRACKET optspace listelems optspace RBRACKET
                     | LBRACKET optspace listelems optspace COMMA RBRACKET'''
-            p[0] = CreateList(p[3])
+            p[0] = CreateList(tuple(p[3]))
         
         def p_list_empty(p):
             'list : LBRACKET optspace RBRACKET'
-            p[0] = CreateList(list())
+            p[0] = CreateList(tuple())
             
         def p_listelems_empty(p):
             'listelems : arg'

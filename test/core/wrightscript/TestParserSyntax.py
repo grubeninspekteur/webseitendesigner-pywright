@@ -145,19 +145,19 @@ class TestParserSyntax(unittest.TestCase):
     def testListEmpty(self):
         '''Tests the empty list with some optional space.'''
         ss = StatementSequence()
-        ss.add(Call(Identifier("fun"), [CreateList(list())]))
+        ss.add(Call(Identifier("fun"), [CreateList(tuple())]))
         self.assertEqual(self.parser.parse("fun [\n]"),ss)
         
     def testListFuncall(self):
         '''Tests a list with one element, a funcall.'''
         ss = StatementSequence()
-        ss.add(Call(Identifier("fun"), [CreateList([Call(Identifier("fun2"), [Number(42)])])]))
+        ss.add(Call(Identifier("fun"), [CreateList(tuple([Call(Identifier("fun2"), [Number(42)])]))]))
         self.assertEqual(self.parser.parse("fun [ \n\n(fun2 42)]"), ss)
         
     def testListInAList(self):
         '''A list in a list.'''
         ss = StatementSequence()
-        ss.add(Call(Identifier("fun"), [CreateList([CreateList([String("Hello"), String("World")]), String("!")])]))
+        ss.add(Call(Identifier("fun"), [CreateList(tuple([CreateList(tuple([String("Hello"), String("World")])), String("!")]))]))
         self.assertEqual(self.parser.parse('fun [["Hello","World"], "!",]'), ss)
     
     def testFailList(self):
@@ -183,13 +183,13 @@ class TestParserSyntax(unittest.TestCase):
     def testFailAssignment(self):
         '''Tests several failing assignments.'''
         self.parser.parse('5 := 5')
-        self.assertTrue(self.parser.hasErrors())
+        self.assertTrue(self.parser.hasErrors(), "Assignment to literal")
         self.parser.parse('var :=')
-        self.assertTrue(self.parser.hasErrors())
+        self.assertTrue(self.parser.hasErrors(), "Missing right hand side")
         self.parser.parse('var :=\n5')
-        self.assertTrue(self.parser.hasErrors())
+        self.assertTrue(self.parser.hasErrors(), "Newline not supported")
         self.parser.parse('var := fundef lambda x\nreturn x\nenddef')
-        self.assertTrue(self.parser.hasErrors(), "We currently do not support first class functions.")
+        self.assertTrue(self.parser.hasErrors(), "We currently do not support first class functions")
         
         
         
