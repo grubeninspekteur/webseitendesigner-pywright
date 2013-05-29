@@ -14,11 +14,15 @@ code as well, saving a lot of if instanceof(...) clauses in the interp()
 function and relying completely on object delegation. However, while this
 makes the actual interp() really small, it will blow up the AST objects,
 violating seperation of concern (representing the syntax and self-evaluation).
+
+TODO+1 define error symbols as explained in PLY documentation to provide more
+information to the user than "Syntax error: Unexpected token on line I don't know"
 '''
 from ..include.ply import yacc as yacc
 from lexer import tokens
 from AST import *
 import os
+from core.wrightscript.AST import CreateEntity
 
 class Parser():
     ##
@@ -106,6 +110,10 @@ class Parser():
             'expression : IDENTIFIER ASSIGN arg'
             p[0] = (Assignment(Identifier(p[1]), p[3]), p.lineno(1))
             
+        def p_expression_assignment_field(p):
+            'expression : field_access ASSIGN arg'
+            p[0] = (FieldAssignment(p[1], p[3]), p.lineno(2))
+            
         def p_expression_conditional(p):
             'expression : IF arg thenexpr elseexpr'
             p[0] = (If(p[2], p[3], p[4]), p.lineno(1))
@@ -127,7 +135,30 @@ class Parser():
             paramlist = p[1]
             paramlist.append(Identifier(p[2]))
             p[0] = paramlist
+            
+        def p_statement_entitydef(p):
+            'statement : ENTITY IDENTIFIER NEWLINE entity_field_definitions NEWLINE ENDENTITY'
+            p[0] = (EntityDefinition(Identifier(p[2]), p[4]), p.lineno(1))
         
+        def p_entity_field_definitions_single(p):
+            'entity_field_definitions : entity_field_definition'
+            p[0] = {p[1][0] : p[1][1]}
+            
+        def p_entity_field_definitions_multiple(p):
+            'entity_field_definitions : entity_field_definitions NEWLINE entity_field_definition'
+            p[0] = p[1] # reuse already defined dictionary
+            key, value = p[3][0], p[3][1]
+            if p[0].has_key(key):
+                raise SyntaxError("Invalid redeclaration of entity field " + repr(key))
+            p[0][key] = value
+            
+        def p_entity_field_definition_nodefault(p):
+            'entity_field_definition : IDENTIFIER'
+            p[0] = (Identifier(p[1]), EntityDefinition.NoDefaultValue())
+            
+        def p_entity_field_defintion_default(p):
+            'entity_field_definition : IDENTIFIER ASSIGN literal'
+            p[0] = (Identifier(p[1]), p[3])
         
         def p_expressions_multiple(p):
             '''expressions : expressions NEWLINE expression
@@ -192,11 +223,26 @@ class Parser():
         def p_arg_list(p):
             'arg : list'
             p[0] = p[1]
-            
+        
+        def p_arg_entity_creation(p):
+            'arg : entity_creation'
+            p[0] = p[1]
             
         def p_arg_literal(p):
             'arg : literal'
             p[0] = p[1]
+            
+        def p_arg_field_access(p):
+            'arg : field_access'
+            p[0] = p[1]
+            
+        def p_field_access_single(p):
+            'field_access : IDENTIFIER PERIOD IDENTIFIER'
+            p[0] = Identifier(p[1] + '.' + p[3])
+            
+        def p_field_access_nested(p):
+            'field_access : field_access PERIOD IDENTIFIER'
+            p[0] = Identifier(p[1].name() + '.' + p[3])
         
         def p_literal_string(p):
             'literal : STRING'
@@ -223,7 +269,7 @@ class Parser():
             'list : LBRACKET optspace RBRACKET'
             p[0] = CreateList(tuple())
             
-        def p_listelems_empty(p):
+        def p_listelems_single(p):
             'listelems : arg'
             p[0] = [p[1]]
             
@@ -232,6 +278,28 @@ class Parser():
             listelems = p[1]
             listelems.append(p[5])
             p[0] = listelems
+            
+        def p_entity_creation(p):
+            'entity_creation : arg LBRACE optspace field_assignments optspace RBRACE'
+            'entity_creation : arg LBRACE optspace field_assignments optspace COMMA RBRACE'
+            p[0] = CreateEntity(p[1], p[4])
+            
+        def p_entity_creation_empty(p):
+            'entity_creation : arg LBRACE optspace RBRACE'
+            p[0] = CreateEntity(p[1], dict())
+            
+        def p_field_assignments_single(p):
+            'field_assignments : IDENTIFIER ASSIGN arg'
+            p[0] = {Identifier(p[1]) : p[3]}
+            
+        def p_field_assignments_multiple(p):
+            'field_assignments : field_assignments optspace COMMA optspace IDENTIFIER ASSIGN arg'
+            p[0] = p[1]
+            key, value = Identifier(p[5]), p[7]
+            if p[0].has_key(key):
+                raise SyntaxError("Invalid double set of entity field " + repr(key))
+            
+            p[0][key] = value
         
         def p_optspace(p):
             '''optspace : empty
@@ -245,7 +313,7 @@ class Parser():
         ##
         # Error handling.
         def p_error(t):
-            self._errors.append(SyntaxError(t))
+            self._errors.append(TokenError(t))
             # Try reaching the next statement (see PLY documentation for yacc)
             while 1:
                 tok = yacc.token()
@@ -255,6 +323,13 @@ class Parser():
         self._parser = yacc.yacc(picklefile= self.PARSETAB_DIR + "/parsetab.pickle")
 
 class SyntaxError():
+    def __init__(self, cause):
+        self._cause = cause
+        
+    def __repr__(self):
+        return "Syntax Error: " + self._cause
+
+class TokenError(SyntaxError):
     def __init__(self, token):
         self._token = token
             

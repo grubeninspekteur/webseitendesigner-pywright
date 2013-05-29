@@ -1,14 +1,16 @@
 program = {{ whitespace }, (  expression, [ white space plus, comment ]
              | comment
              | multiline comment
-             function definition
+             | function definition
+             | entity definition
              ), line feed, optional space } ;
 comment = "#", all characters - line feed ;
 multiline comment = "/*", all characters, "*/" ;
 
-expression = label | function call | implicit textbox | 'resume' | goto | conditional | 'exit' | assignment ;
+expression = label | function call | implicit textbox | 'resume' | goto | conditional | 'exit' | assignment;
 
-assignemnt = identifier { white space } ':=' { white space } argument
+assignment = identifier, { white space }, ':=', { white space }, argument ;
+             | entity field access, ':=', { white space }, argument ;
 
 conditional = 'is', white space plus,
               argument, white space plus,
@@ -17,19 +19,34 @@ conditional = 'is', white space plus,
 label = 'label', white space plus, identifier, [white space plus, identifier] ;
 goto = 'goto', white space plus, identifier ;
 
+entity field access = identifier, { white space }, ".",  { white space }, identifier ;
+                      | identifier, { white space }, ".", entitiy field access
+
 function call = identifier, {white space plus, argument} ;
-argument = identifier | literal | "(" { white space }, function call, { white space }, ")" | list ;
+argument = identifier | literal | "(" { white space }, function call, { white space }, ")" | list | entity field access | entity creation ;
 
 list = "[", (empty |{argument, ","}, argument), "]"
 
+entity creation = identifier, {white space}, "{",
+                    (empty
+                     | {{identifier, {white space}, ":=", {white space} argument, ","}, argument),
+                     "}" ;
+
 implicit textbox = string ;
 
-function definition = 'def', white space plus,
-                      identifier, white space plus,
-                      {identifier, white space plus},
-                      line feed, {optional space},
+function definition = 'def', white space,
+                      identifier,
+                      { white space, identifier },
+                      line feed, { optional space },
                       { { whitespace }, ( expression - goto - label | comment | multiline comment | 'return', white space plus, argument ), line feed, optional space },
-                      'enddef'
+                      'enddef' ;
+
+entity definition = 'entity', white space plus,
+                    line feed, { optional space },
+                    {({ whitespace }, identifier
+                      | { whitespace }, identifier, { whitespace } ':=', { whitespace } literal), line feed},
+                    'endentity'
+                      
 
 literal = string | number | boolean
 string = '"' , { all characters - '"' }, '"' ;
