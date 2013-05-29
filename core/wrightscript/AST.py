@@ -1,6 +1,7 @@
 '''
 These classes are used for building an abstract syntax tree of Wrightscript.
 '''
+from core.functional import forall
 
 
 # Exceptions
@@ -13,7 +14,9 @@ class StatementNoOutOfBoundsException:
 
 class Node():
     def __eq__(self, other):
-        if isinstance(other, Node) == False: return False
+        # As "case classes", derived nodes must have the same class to be equal
+        if self.__class__ != other.__class__:
+            return False
         return self.__dict__ == other.__dict__
 
 ##
@@ -27,6 +30,9 @@ class Identifier(Node):
     
     def __repr__(self):
         return self._name
+    
+    def __hash__(self):
+        return hash(self._name)
 
 ##
 # The literal types are also defined as nodes as we may want to
@@ -77,6 +83,9 @@ class Number(Literal):
     
     def __repr__(self):
         return 'Number(' + str(self._value) + ')'
+    
+    def __hash__(self):
+        return hash(self._value)
 
 
 ##
@@ -98,6 +107,9 @@ class String(Literal):
     
     def __repr__(self):
         return 'String("' + self._value + '")'
+    
+    def __hash__(self):
+        return hash(self._value)
     
 ##
 # Holds the statement sequence as a list.
@@ -168,7 +180,7 @@ class StatementSequence(Node):
     def __repr__(self):
         min_lineno_width = len(str(max(lineno for (_, lineno) in self._statements)))
         fmt = "%" + str(min_lineno_width) + "d"
-        return '\n'.join((fmt % lineno) + ': ' + repr(stmt) for (stmt, lineno) in self._statements)
+        return "\n" + '\n'.join((fmt % lineno) + ': ' + repr(stmt) for (stmt, lineno) in self._statements)
     
     def __eq__(self, other):
         if isinstance(other, StatementSequence) == False:
@@ -201,6 +213,9 @@ class Label(Node):
         
     def __repr__(self):
         return 'LABEL ' + repr(self._name)
+    
+    def __hash__(self):
+        return hash(self._name)
 
 ##
 # Resume jumps to the last position of a goto statement.
@@ -369,15 +384,119 @@ class CreateList(Node):
 # x := (add x 1)
 #
 class Assignment(Node):
+    ##
+    # @param lhs An Identifier representing the
+    #                   variable to assign the value to
+    # @param value Node The (unevaluated) value       
     def __init__(self, identifier, value):
-        self._identifier = identifier
-        self._value = value
+        self._lhs = identifier
+        self._rhs = value
         
-    def identifier(self):
-        return self._identifier
+    def leftHandSide(self):
+        return self._lhs
     
-    def value(self):
-        return self._identifier
+    def rightHandSide(self):
+        return self._rhs
     
     def __repr__(self):
-        return repr(self._identifier) + ' := ' + repr(self._value)
+        return repr(self._lhs) + ' := ' + repr(self._rhs)
+
+##
+# An assignment where the left hand side is the
+# field of an entity, e.g.
+#
+# Box.color := Blue
+#
+class FieldAssignment(Assignment):
+    ##
+    # @param fieldname The complete field identifier (including all dots)
+    # @param value Node the (unevaluated) value
+    def __init__(self, fieldname, value):
+        self._lhs = fieldname
+        self._rhs = value
+
+
+##
+# Exception thrown when an entity's field is
+# accessed that does not exist.
+# TODO move that nearer to evaluation of actually created entities!
+class FieldNotDeclaredException(Exception):
+    ##
+    # @param entity String Name of the entity
+    # @param field String Name of the field
+    def __init__(self, entity, field):
+        self._entity = entity
+        self._field  = field
+    
+    def __repr__(self):
+        return 'Field ' + repr(self._field) + 'is not declared in entity ' + repr(self._entity)
+
+##
+# Defines an entity. An entity is like a struct from c++. It
+# is a closed container with mutable entries. All fields
+# defined in this statement must be present when instantiating
+# an entity, however default values are allowed.
+class EntityDefinition(Node):
+    
+    ##
+    # Class that represents a field that has no default value.
+    class NoDefaultValue():
+        def __repr__(self):
+            return 'Nil'
+        
+        def __eq__(self, other):
+            return isinstance(other, EntityDefinition.NoDefaultValue)
+
+    ##
+    # @param name Identifier containing the entity's name.
+    # @param dictionaryOfFields A dictionary mapping Identifiers to Literals
+    #                           or NoDefault nodes.
+    def __init__(self, name, dictionaryOfFields):
+        self._name = name
+        self._fields = dictionaryOfFields
+    
+    ##
+    # @return Identifier name of the entity definition
+    def name(self):
+        return self._name
+    
+    def fields(self):
+        return self._fields
+    
+    def __repr__(self):
+        str = 'ENTITY ' + repr(self._name) + ' {\n' + repr(self._fields) + '\n}'
+        return str
+    
+    ##
+    # Returns whether the given list of field Identifiers, representing
+    # the fields that are set during instantiation of an entity, is valid
+    # for this Entity definition.
+    #
+    # A entity instantiation is valid if and only if all fields without
+    # default values are set.
+    def isValidInstantiation(self, listOfFieldsToSet):
+        fieldsToSet = set(listOfFieldsToSet)
+        fieldsDeclared = set(self._fields.keys())
+        
+        unsetFields = fieldsDeclared.difference(fieldsToSet)
+        
+        return forall(lambda field: not isinstance(self._fields[field], EntityDefinition.NoDefaultValue), unsetFields)
+
+##
+# Creates an entity.
+class CreateEntity(Node):
+        ##
+        # @param template The EntityDefinition (or an identifier referring to it)
+        # @param dictionaryOfAssignments A dictionary mapping Identifiers to (unevaluated) values
+        def __init__(self, template, dictionaryOfAssignments):
+            self._template = template
+            self._assignments = dictionaryOfAssignments
+            
+        def template(self):
+            return self._template
+        
+        def assignments(self):
+            return self._assignments
+        
+        def __repr__(self):
+            return repr(self._template) + "{" + repr(self._assignments) + "}"

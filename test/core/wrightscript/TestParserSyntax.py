@@ -32,6 +32,10 @@ class TestParserSyntax(unittest.TestCase):
     def _goto(self, string):
         return Goto(Identifier(string))
     
+    def _expectErrors(self, stringToParse, message=""):
+        self.parser.parse(stringToParse)
+        self.assertTrue(self.parser.hasErrors(), message)
+    
     def testLabels(self):
         '''Tests some simple label, resume and goto expresssions.'''
         ss = StatementSequence()
@@ -191,7 +195,38 @@ class TestParserSyntax(unittest.TestCase):
         self.parser.parse('var := fundef lambda x\nreturn x\nenddef')
         self.assertTrue(self.parser.hasErrors(), "We currently do not support first class functions")
         
+    def testEntityDefinition(self):
+        '''Tests a simple entity definition.'''
+        ss = StatementSequence()
+        ss.add(EntityDefinition(Identifier("Character"),
+                                {Identifier("name") : String("???"),
+                                 Identifier("blipsound") : EntityDefinition.NoDefaultValue()}))
+        ss.add(Assignment(Identifier("Apollo"),
+                          CreateEntity(Identifier("Character"), {Identifier("name") : String("Apollo"),
+                                                                 Identifier("blipsound") : String("male")})))
+        ss.add(Call(Identifier("speaker"), [Identifier("Apollo")]))
+        ss.add(self._textbox("I have Chords of Steel!"))
+        ss.add(Call(Identifier("speaker"), [CreateEntity(Identifier("Character"), {Identifier("name") : String(""),
+                                                                 Identifier("blipsound") : String("typewriter")})]))
+        ss.add(self._textbox("March 22"))
+        ss.add(FieldAssignment(Identifier("Apollo.blipsound"), String("silent")))
+        ss.add(Call(Identifier("speaker"), [Identifier("Apollo")]))
+        ss.add(self._textbox("What happened to my voice?"))
         
+        self.assertEqual(self._parsed("entity"), ss)
+        
+    def testDoubleFieldAccess(self):
+        '''Tests accessing a field of an entity inside a field of an entity; also fields as arguments of fuctions.'''
+        ss = StatementSequence()
+        ss.add(Call(Identifier("print"), [Identifier("Ema.mad.filename")]))
+        
+        self.assertEqual(self.parser.parse("print Ema.mad.filename"), ss)
+        
+    def testFailEntity(self):
+        '''Tests failing entity definitions and field accessing.'''
+        self._expectErrors('entity Empty\nendentity', "An entity defintion may not be empty.")
+        self._expectErrors('entity Bad\nfoo := bar\nendentity', "Entities can only have literals as default values.")
+        self.assertRaises(SyntaxError, self.parser.parse, "entity Double\na\na\nendentity")
         
     
 if __name__ == "__main__":

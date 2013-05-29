@@ -34,6 +34,8 @@ reserved = {
    'exit' : 'EXIT',
    'def' : 'DEF',
    'enddef' : 'ENDDEF',
+   'entity' : 'ENTITY',
+   'endentity' : 'ENDENTITY',
    'return' : 'RETURN'
 }
 
@@ -48,6 +50,9 @@ tokens = [
     'RPAREN',
     'LBRACKET',
     'RBRACKET',
+    'PERIOD',
+    'LBRACE',
+    'RBRACE',
     'COMMA',
     'ASSIGN',
     'COMMENT',
@@ -61,6 +66,9 @@ t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_LBRACKET = r'\['
 t_RBRACKET = r'\]'
+t_LBRACE = r'{'
+t_RBRACE = r'}'
+t_PERIOD = r'\.'
 t_COMMA = r','
 t_ASSIGN = r':='
 
@@ -91,7 +99,7 @@ def t_BOOLEAN(t):
     return t
 
 def t_IDENTIFIER(t):
-    r'[a-zA-Z_][a-zA-Z0-9_.]*'
+    r'[a-zA-Z_][a-zA-Z0-9_]*'
     t.type = reserved.get(t.value, 'IDENTIFIER') # as in PLY example - reduces regExpressions
     return t
 

@@ -89,13 +89,7 @@ class Test(unittest.TestCase):
         else:
             self.fail("Negative values are currently not supported and should raise a ParseException")
         
-        try:
-            input = "42.0"
-            self.parseAsTypeList(input)
-        except ParseException:
-            pass
-        else:
-            self.fail("Floats are currently not supported and should raise a ParseException")
+        self.assertNotEqual(self.parseAsTypeList("42.0"), ["NUMBER"], "Floats are currently not supported")
     
     def testBooleans(self):
         """Tests that boolean literals are parsed correctly."""
@@ -106,11 +100,10 @@ class Test(unittest.TestCase):
     def testInvalidIdentifier(self):
         """Tests some invalid Identifier names."""
         self.assertRaises(ParseException, self.parseAsTypeList, "42_invalid")
-        self.assertRaises(ParseException, self.parseAsTypeList, "..dotty")
         
     def testIdentifier(self):
         """Tests some valid Identifier names."""
-        self.assertEqual(self.parseAsTypeList('sub.part valid_name __init__ double..'), ['IDENTIFIER' for _ in range(0, 4)])
+        self.assertEqual(self.parseAsTypeList('subPART valid_name __init__'), ['IDENTIFIER' for _ in range(0, 3)])
         
     def testParenthesis(self):
         """A call to print with the result of a math expression."""
@@ -156,6 +149,21 @@ class Test(unittest.TestCase):
         self.assertEqual(self.parseAsTypeList(input1), typeList)
         self.assertEqual(self.parseAsTypeList(input2), typeList)
         
+    def testFieldAccess(self):
+        """Tests that field access and entity creation is not rejected by the lexer."""
+        input = '''
+        entity character
+          name := "???"
+        endentity
+        
+        phoenix := character {name:="Phoenix"}
+        print phoenix.name # prints "Phoenix"'''
+        
+        typeList = ['NEWLINE', 'ENTITY', 'IDENTIFIER', 'NEWLINE', 'IDENTIFIER', 'ASSIGN', 'STRING', 'NEWLINE', 'ENDENTITY',
+                    'NEWLINE', 'NEWLINE', 'IDENTIFIER', 'ASSIGN', 'IDENTIFIER', 'LBRACE', 'IDENTIFIER', 'ASSIGN', 'STRING',
+                    'RBRACE', 'NEWLINE', 'IDENTIFIER', 'IDENTIFIER', 'PERIOD', 'IDENTIFIER']
+        
+        self.assertEqual(self.parseAsTypeList(input), typeList)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
