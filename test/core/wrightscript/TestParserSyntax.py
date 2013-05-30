@@ -4,24 +4,26 @@ Tree from Wrightscript.
 '''
 import unittest
 import os
-from core.wrightscript.parser import Parser, SyntaxError
+from core.wrightscript.parser import Parser
+from core.wrightscript.SyntaxException import SyntaxException
 from core.wrightscript.AST import *
 from core.functional import forall
+
+def getScriptFromFile(scriptname):
+    '''Helper function that retrieves a testfile from the samples directory.'''
+    f = open(os.path.dirname(os.path.abspath(__file__)) + '/samples/' + scriptname + '.ws', 'r')
+    str = f.read()
+    f.close()
+    return str
 
 class TestParserSyntax(unittest.TestCase):
 
     def setUp(self):
         self.parser = Parser()
-
-    def _getScriptFromFile(self, scriptname):
-        '''Helper function that retrieves a testfile from the samples directory.'''
-        f = open(os.path.dirname(os.path.abspath(__file__)) + '/samples/' + scriptname + '.ws', 'r')
-        str = f.read()
-        f.close()
-        return str
+        
     
     def _parsed(self, scriptname):
-        return self.parser.parse(self._getScriptFromFile(scriptname))
+        return self.parser.parse(getScriptFromFile(scriptname))
     
     def _textbox(self, string):
         return Call(Identifier('textbox'), [String(string)])
@@ -101,7 +103,7 @@ class TestParserSyntax(unittest.TestCase):
         
         self.assertTrue(self.parser.hasErrors())
         self.assertTrue(self.parser.errors())
-        self.assertTrue(forall(lambda x: isinstance(x, SyntaxError), self.parser.errors()))
+        self.assertTrue(forall(lambda x: isinstance(x, SyntaxException), self.parser.errors()))
         
     def testResetErrors(self):
         '''The errors should be reset between parses.'''
