@@ -34,12 +34,6 @@ class Identifier(Node):
     def __hash__(self):
         return hash(self._name)
 
-##
-# The literal types are also defined as nodes as we may want to
-# redefine the type conversion rules. For now, type conversion
-# follows Python's rules.
-##
-
 class Literal(Node):
     pass
 
@@ -50,15 +44,6 @@ class Boolean(Literal):
     # @param value Boolean
     def __init__(self, value):
         self._value = bool(value)
-    
-    def __bool__(self):
-        return self._value
-    
-    def __str__(self):
-        return str(self._value)
-    
-    def __int__(self):
-        return int(self._value)
     
     def __repr__(self):
         return 'Boolean(' + str(self._value) + ')'
@@ -71,15 +56,6 @@ class Number(Literal):
     def __init__(self, value):
         assert(value >= 0)
         self._value = int(value)
-        
-    def __bool__(self):
-        return bool(self._value)
-    
-    def __str__(self):
-        return str(self._value)
-    
-    def __int__(self):
-        return self._value
     
     def __repr__(self):
         return 'Number(' + str(self._value) + ')'
@@ -95,15 +71,6 @@ class String(Literal):
     # @param value A string
     def __init__(self, value):
         self._value = str(value)
-        
-    def __bool__(self):
-        return bool(self._value)
-    
-    def __str__(self):
-        return self._value
-    
-    def __int__(self):
-        return int(self._value)
     
     def __repr__(self):
         return 'String("' + self._value + '")'
@@ -118,6 +85,7 @@ class StatementSequence(Node):
 
     def __init__(self):
         self._statements = []
+        self._lineNoToPos = dict()
         self._pos = -1
         
     ##
@@ -126,6 +94,7 @@ class StatementSequence(Node):
     # @param lineno The line number. May be omitted for testing purpose.
     def add(self, node, lineno=-1):
         self._statements.append((node, lineno))
+        self._lineNoToPos[lineno] = self.pos
         
     ##
     # Rewinds the internal statement pointer.
@@ -153,7 +122,7 @@ class StatementSequence(Node):
         if self._pos >= len(self._statements):
             return None
         else:
-            return self._statements(self._pos)    
+            return self._statements(self._pos)
     ##
     # Returns the current position of the instruction counter,
     # that is, the position of the statement returned by next.

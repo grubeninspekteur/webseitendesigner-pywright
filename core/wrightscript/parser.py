@@ -22,7 +22,8 @@ from ..include.ply import yacc as yacc
 from lexer import tokens
 from AST import *
 import os
-from core.wrightscript.AST import CreateEntity
+from SyntaxException import *
+from Environment import Environment
 
 class Parser():
     ##
@@ -45,12 +46,17 @@ class Parser():
     def hasErrors(self):
         return bool(self._errors)
 
-    def parse(self, script, debug=False):
-        '''String => StatementSequence
+    def parse(self, script, env=Environment(), debug=False):
+        '''String [Environment [Boolean]] -> StatementSequence
         
         Parses the given script and returns the
-        resulting abstract syntax tree.'''
+        resulting abstract syntax tree. The Environment, if given,
+        is populated with the functions, entity definitions and label
+        to line number bindings found in the script.
+        
+        Parallel execution not supported.'''
         self.resetErrors()
+        self.env = env
         return self._parser.parse(script, debug=debug)
 
     def buildParser(self):
@@ -89,6 +95,10 @@ class Parser():
         def p_statement_label(p):
             'statement : LABEL IDENTIFIER'
             p[0] = (Label(Identifier(p[2])), p.lineno(1))
+            try:
+                self.env.addLabel(p[0][0], p.lineno(1))
+            except LabelDefinitionError, e:
+                self._errors.append(e)
         
         def p_expression_funcall(p):
             'expression : IDENTIFIER args'
@@ -125,6 +135,10 @@ class Parser():
         def p_statement_fundef(p):
             'statement : DEF IDENTIFIER params NEWLINE expressions NEWLINE ENDDEF'
             p[0] = (Function(Identifier(p[2]), p[3], p[5]), p.lineno(1))
+            try:
+                self.env.addFunction(p[0][0])
+            except FunctionDefinitionError, e:
+                self._errors.append(e)
         
         def p_params_empty(p):
             'params : empty'
@@ -139,6 +153,11 @@ class Parser():
         def p_statement_entitydef(p):
             'statement : ENTITY IDENTIFIER NEWLINE entity_field_definitions NEWLINE ENDENTITY'
             p[0] = (EntityDefinition(Identifier(p[2]), p[4]), p.lineno(1))
+            try:
+                self.env.addEntityDefinition(p[0][0])
+            except EntityDefinitionError, e:
+                self._errors.append(e)
+        
         
         def p_entity_field_definitions_single(p):
             'entity_field_definitions : entity_field_definition'
@@ -322,22 +341,3 @@ class Parser():
         
         self._parser = yacc.yacc(picklefile= self.PARSETAB_DIR + "/parsetab.pickle")
 
-class SyntaxError():
-    def __init__(self, cause):
-        self._cause = cause
-        
-    def __repr__(self):
-        return "Syntax Error: " + self._cause
-
-class TokenError(SyntaxError):
-    def __init__(self, token):
-        self._token = token
-            
-    def token(self):
-        return self._token
-        
-    def __repr__(self):
-        if self._token is None:
-            return 'Unexpected end of file!'
-        else:
-            return 'Syntax Error: Unexpected ' + str(self._token.type) + ' ' + repr(self._token.value) + ' at line ' + repr(self._token.lineno)
