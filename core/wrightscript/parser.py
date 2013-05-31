@@ -1,13 +1,10 @@
 '''
 The parser takes a string (presumely from a file) containing Wrightscript
-and returns an abstract syntax tree (AST) of statements. It only performs
-the syntactic analysis, so don't expect functions to be extracted or label
-identifiers to be bound to positions in the StatementSequence.
+and returns an abstract syntax tree (AST) of statements. It also does
+the semantic analysis and binds labels, functions and entities
+to their respective labels in a given environment.
 
-TODO actually it is wiser to do the semantic analysis (label and function
-extraction) in this step as well. I can basically see no harm in doing so,
-as all the information required is already present. So a call to Parser::parse
-requires an Environment (defaulting to empty).
+TODO 
 
 Also, the AST shouldn't stay an abstract syntax tree but hold the evaluate
 code as well, saving a lot of if instanceof(...) clauses in the interp()
@@ -58,8 +55,14 @@ class Parser():
         self.resetErrors()
         self.env = env
         return self._parser.parse(script, debug=debug)
-
+            
     def buildParser(self):
+        def addLabel(node, lineno, ss):
+            try:
+                self.env.addLabel(node, lineno, ss)
+            except LabelDefinitionError, e:
+                self._errors.append(e)
+        
         ##
         # RULES
         #
@@ -80,6 +83,10 @@ class Parser():
             (node, lineno) = p[3]
             p[0] = p[1] # reuse statement sequence
             p[0].add(node, lineno)
+            
+            # We have to do the step at this stage and not in statement_label as we require the StatementSequence
+            if isinstance(node, Label):
+                addLabel(node, lineno, p[0])
         
         def p_statements_single(p):
             'statements : statement'
@@ -87,6 +94,10 @@ class Parser():
             (node, lineno) = p[1]
             ss.add(node, lineno)
             p[0] = ss
+            
+            # We have to do the step at this stage and not in statement_label as we require the StatementSequence
+            if isinstance(node, Label):
+                addLabel(node, lineno, ss)
         
         def p_statement_expression(p):
             'statement : expression'
@@ -95,10 +106,6 @@ class Parser():
         def p_statement_label(p):
             'statement : LABEL IDENTIFIER'
             p[0] = (Label(Identifier(p[2])), p.lineno(1))
-            try:
-                self.env.addLabel(p[0][0], p.lineno(1))
-            except LabelDefinitionError, e:
-                self._errors.append(e)
         
         def p_expression_funcall(p):
             'expression : IDENTIFIER args'

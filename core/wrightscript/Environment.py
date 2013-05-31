@@ -1,6 +1,6 @@
 from RuntimeException import UnboundNameError, InvalidFieldAccessError, AlreadyDefinedError
-from Values import Value, Entity, LineNumber
-from AST import Function, Label, EntityDefinition
+from Values import Value, Entity, JumpPosition
+from AST import Function, Label, EntityDefinition, StatementSequence
 from SyntaxException import FunctionDefinitionError, LabelDefinitionError, EntityDefinitionError
 
 
@@ -101,7 +101,7 @@ class Environment(object):
         if self.isBound(name):
             boundValue = self.get(name)
             
-            if isinstance(boundValue, LineNumber):
+            if isinstance(boundValue, JumpPosition):
                 raise AlreadyDefinedError(name, "Label")
             if isinstance(boundValue, Function):
                 raise AlreadyDefinedError(name, "Function")
@@ -139,18 +139,19 @@ class Environment(object):
         
         self._bindings[definitionName] = entityDefinition
         
-    def addLabel(self, label, lineNo):
-        '''Adds a binding of the given label's identifier to it's LineNumber.
+    def addLabel(self, label, lineNo, statementSequence):
+        '''Adds a binding of the given label's identifier to it's line number in the StatementSequence.
         
         Raises an LabelDefinitionError when the name has already been defined (as a variable or otherwise).'''
         assert(isinstance(label, Label))
+        assert(isinstance(statementSequence, StatementSequence))
         
         labelName = label.name().name()
         
         if self.isBound(labelName):
             raise LabelDefinitionError(labelName, self.get(labelName))
         
-        self._bindings[labelName] = LineNumber(int(lineNo))
+        self._bindings[labelName] = JumpPosition(int(lineNo), statementSequence)
         
     def __nonzero__(self):
         '''Answers whether the environment contains any bindings.'''
