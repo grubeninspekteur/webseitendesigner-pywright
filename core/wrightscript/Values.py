@@ -8,7 +8,7 @@ from AST import Node
 
 class Value(Node):
     def eval(self):
-        # TODO consider raising an error, as normally values should not be evaluated
+        raise "Internal State Error: Values should not be evaluated"
         return self
 
 class BooleanV(Value):
@@ -81,13 +81,20 @@ class Entity(Value):
     '''An Entity created by the CreateEntity expression.'''
     pass # TODO
 
-class LineNumber(Value):
-    '''A line number, usually bound to a label identifier.'''
-    def __init__(self, lineNo):
+class JumpPosition(Value):
+    '''A line number and the associated StatementSequence, usually bound to a label identifier.
+    
+    The StatementSequence is being recorded to support jumps between included scripts.'''
+    
+    def __init__(self, lineNo, statementSequence):
         self._lineNo = lineNo
+        self._statementSequence = statementSequence
         
-    def value(self):
+    def lineNumber(self):
         return self._lineNo
+    
+    def statementSequence(self):
+        return self._statementSequence
     
     def __repr__(self):
         return repr(self._lineNo)

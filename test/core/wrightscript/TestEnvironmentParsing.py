@@ -5,7 +5,7 @@ import unittest
 from TestParserSyntax import getScriptFromFile
 from core.wrightscript.parser import Parser
 from core.wrightscript.Environment import Environment
-from core.wrightscript.Values import LineNumber
+from core.wrightscript.Values import JumpPosition
 from core.wrightscript.AST import *
 
 
@@ -18,8 +18,8 @@ class TestEnvironmentParsing(unittest.TestCase):
     def _parsed(self, scriptname):
         return self.parser.parse(getScriptFromFile(scriptname), self.env)
     
-    def _assertLabel(self, name, lineNo):
-        self.assertEqual(self.env.get(name), LineNumber(lineNo))
+    def _assertLabel(self, name, lineNo, statementSequence):
+        self.assertEqual(self.env.get(name), JumpPosition(lineNo, statementSequence))
 
     def testEmpty(self):
         '''Ensures that parsing no definitions nor labels won't change the environment.'''
@@ -28,10 +28,10 @@ class TestEnvironmentParsing(unittest.TestCase):
     
     def testLabels(self):
         '''Tests that labels are bound correctly.'''
-        self._parsed('labels')
-        self._assertLabel("pre", 9)
-        self._assertLabel("main", 15)
-        self._assertLabel("a", 18)
+        statementSequence = self._parsed('labels')
+        self._assertLabel("pre", 9, statementSequence)
+        self._assertLabel("main", 15, statementSequence)
+        self._assertLabel("a", 18, statementSequence)
         
     def testFunction(self):
         '''Tests that functions are bound correctly.'''
