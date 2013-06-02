@@ -71,3 +71,42 @@ class WrongArgumentNumberError(RuntimeException):
             return "Function " + self.functionName + " has exactly " + str(self.expected) + " parameters (" + str(self.passed) + " given)"
         except Exception, e:
             print e
+            
+class NotAnEntityDefinitionError(RuntimeException):
+    def __str__(self):
+        return "Invalid instantiation of non-entity"
+    
+class MissingFieldDeclerationError(RuntimeException):
+    def __init__(self, templateName, keysMissing):
+        self._templateName = templateName
+        self._keysMissing = keysMissing
+        
+    def __str__(self):
+        return self._templateName + " requires the following fields to be set: " + repr(self._keysMissing)
+    
+class FunctionAsRightValueError(RuntimeException):
+    '''Raised when a function is being assigned to a variable. This
+    is prevented as this variable could never be set again (the Environment
+    would think of it as a Function defined at parsing step).'''
+    def __init__(self, funName):
+        self._funName = funName
+        
+    def __str__(self):
+        return "Can't assign function " + repr(self._funName)  + " to a field or variable"
+    
+class NotAFunctionError(RuntimeException):
+    '''Raised when a non-function is called.'''
+    
+    def __init__(self, nonFunction):
+        self._nonFunction = nonFunction
+    
+    def __str__(self):
+        return "Invalid call to non function " + repr(self._nonFunction)
+    
+class Traceback(RuntimeException):
+    def __init__(self, exception, lineNo):
+        self._exception = exception
+        self._lineNo = lineNo
+        
+    def __str__(self):
+        return str(self._exception) + " at line " + repr(self._lineNo)

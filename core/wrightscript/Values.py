@@ -3,19 +3,23 @@ When creating certain objects in Wrightscript or when targeting
 a label, an instance of one of the classes defined here will be
 created and stored inside the environment. 
 '''
-
-from AST import Node
 from core.wrightscript.RuntimeException import UnknownFieldError
 
-class Value(Node):
-    def eval(self):
-        raise "Internal State Error: Values should not be evaluated"
+class Value(object):
+    def interp(self, env):
+        raise "Internal State Error: Values should not be interpreted"
         return self
     
     def value(self):
         raise NotImplementedError("SubclassResponsibility")
+    
+    def __eq__(self, other):
+        # As "case classes", derived nodes must have the same class to be equal
+        if self.__class__ != other.__class__:
+            return False
+        return self.__dict__ == other.__dict__
 
-class NilV(Node):
+class NilV(Value):
     def value(self):
         return None
 

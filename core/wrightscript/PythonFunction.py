@@ -236,4 +236,7 @@ class PythonFunction(Callable):
                )
     
     def __name__(self):
-        return self.fun.__name__      
+        return self.fun.__name__
+    
+    def interp(self, env):
+        return self
