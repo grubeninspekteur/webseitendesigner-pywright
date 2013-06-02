@@ -81,14 +81,6 @@ class Test(unittest.TestCase):
         input = '42 100'
         self.assertEqual(self.parseAsValueList(input), [42, 100])
         
-        try:
-            input = "-42"
-            self.parseAsTypeList(input)
-        except ParseException:
-            pass
-        else:
-            self.fail("Negative values are currently not supported and should raise a ParseException")
-        
         self.assertNotEqual(self.parseAsTypeList("42.0"), ["NUMBER"], "Floats are currently not supported")
     
     def testBooleans(self):
@@ -164,7 +156,15 @@ class Test(unittest.TestCase):
                     'RBRACE', 'NEWLINE', 'IDENTIFIER', 'IDENTIFIER', 'PERIOD', 'IDENTIFIER']
         
         self.assertEqual(self.parseAsTypeList(input), typeList)
-
+        
+    def testBinaryOperation(self):
+        """Test of binary operations."""
+        input = 'fun 5 - 3 \n if true = true'
+        
+        typeList = ['IDENTIFIER', 'NUMBER', 'BINOP', 'NUMBER', 'NEWLINE', 'IF', 'BOOLEAN', 'BINOP', 'BOOLEAN']
+        
+        self.assertEqual(self.parseAsTypeList(input), typeList)
+        
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

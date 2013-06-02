@@ -7,6 +7,7 @@ from core.wrightscript.parser import Parser
 from core.wrightscript.Environment import Environment
 from core.wrightscript.Values import JumpPosition
 from core.wrightscript.AST import *
+from core.wrightscript.RuntimeException import UnboundNameError
 
 
 class TestEnvironmentParsing(unittest.TestCase):
@@ -56,6 +57,12 @@ class TestEnvironmentParsing(unittest.TestCase):
                                  Identifier("blipsound") : EntityDefinition.NoDefaultValue()})
         
         self.assertEqual(self.env.get('Character'), entity)
+        
+    def testDefaultEnvironmentReset(self):
+        '''Tests that the default environment is created on any subsequent parse.'''
+        self.parser.parse(getScriptFromFile('entity'))
+        self.parser.parse(getScriptFromFile('labels'))
+        self.assertRaises(UnboundNameError, self.parser.env.get, 'Character')
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

@@ -341,7 +341,7 @@ class Return(Node):
 # prints 42.
 class CreateList(Node):
     def __init__(self, listOfNodes):
-        self._value = listOfNodes
+        self._value = tuple(listOfNodes)
         
     def list(self):
         return self._value

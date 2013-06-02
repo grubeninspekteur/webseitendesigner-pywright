@@ -55,6 +55,7 @@ class TestParserSyntax(unittest.TestCase):
         ss.add(self._textbox("FIN"))
         
         self.assertEqual(self._parsed("labels"), ss)
+
         self.assertFalse(self.parser.hasErrors())
         
     def testFundef(self):
@@ -120,12 +121,12 @@ class TestParserSyntax(unittest.TestCase):
         parserA = Parser()
         parserB = Parser()
         
-        parserA.parse(self._getScriptFromFile("fail_return_outside_fundef"))
-        parserB.parse(self._getScriptFromFile("labels"))
+        parserA.parse(getScriptFromFile("fail_return_outside_fundef"))
+        parserB.parse(getScriptFromFile("labels"))
         
         self.assertTrue(parserA.hasErrors())
         self.assertFalse(parserB.hasErrors())
-    
+        
     def testLabelGoto(self):
         '''A label or goto statement inside a function is not allowed.'''
         
@@ -133,7 +134,7 @@ class TestParserSyntax(unittest.TestCase):
         self.assertTrue(self.parser.hasErrors())
         self._parsed("fail_goto_inside_function")
         self.assertTrue(self.parser.hasErrors())
-        
+         
     def testIncompleteSyntax(self):
         '''Tests several syntactic incomplete scripts.'''
         self.parser.parse("label\ngoto a")
@@ -228,8 +229,25 @@ class TestParserSyntax(unittest.TestCase):
         '''Tests failing entity definitions and field accessing.'''
         self._expectErrors('entity Empty\nendentity', "An entity defintion may not be empty.")
         self._expectErrors('entity Bad\nfoo := bar\nendentity', "Entities can only have literals as default values.")
-        self.assertRaises(SyntaxError, self.parser.parse, "entity Double\na\na\nendentity")
+        self.assertRaises(SyntaxException, self.parser.parse, "entity Double\na\na\nendentity")
+    
+    def testBinaryOperation(self):
+        '''Tests simple binary operations.'''
+        funss = StatementSequence()
+        funss.add(Return(Call(Identifier("::"), [Identifier("list"), CreateList([Identifier("elem")])])))
         
+        ss = StatementSequence()
+        ss.add(Assignment(Identifier("a"), Call(Identifier("+"), [Number(5), Number(5)])))
+        ss.add(Assignment(Identifier("a"), Call(Identifier("-"), [Number(10), Call(Identifier("*"), [Number(2), Number(3)])])))
+        ss.add(Assignment(Identifier("a"), Call(Identifier("*"), [Call(Identifier("-"), [Number(10), Number(2)]), Number(3)])))
+        ss.add(Assignment(Identifier("a"), Call(Identifier("*"), [Call(Identifier("-"), [Number(10), Number(2)]), Number(3)])))
+        ss.add(If(Call(Identifier("="), [Number(5), Number(5)]), Call(Identifier("fun"), []), None))
+        ss.add(Call(Identifier("fun2"), [Call(Identifier(":+"), [CreateList([Number(1), Number(2), Number(3)]), Number(5)])]))
+        ss.add(Call(Identifier("fun3"), [Call(Identifier(":+"), [CreateList([Number(1), Number(2), Number(3)]), Number(5)]), String("more")]))
+        ss.add(Call(Identifier("fun4"), [Call(Identifier("+"), [Number(5), Number(5)]), Call(Identifier("fun"), [])]))
+        ss.add(Function(Identifier(":+"), [Identifier("list"), Identifier("elem")], funss))
+        
+        self.assertEqual(self._parsed("binary_ops"), ss)
     
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
