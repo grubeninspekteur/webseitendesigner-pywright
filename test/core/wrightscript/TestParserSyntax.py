@@ -152,19 +152,19 @@ class TestParserSyntax(unittest.TestCase):
     def testListEmpty(self):
         '''Tests the empty list with some optional space.'''
         ss = StatementSequence()
-        ss.add(Call(Identifier("fun"), [CreateList(tuple())]))
+        ss.add(Call(Identifier("fun"), [CreateList([])]))
         self.assertEqual(self.parser.parse("fun [\n]"),ss)
         
     def testListFuncall(self):
         '''Tests a list with one element, a funcall.'''
         ss = StatementSequence()
-        ss.add(Call(Identifier("fun"), [CreateList(tuple([Call(Identifier("fun2"), [Number(42)])]))]))
+        ss.add(Call(Identifier("fun"), [CreateList([Call(Identifier("fun2"), [Number(42)])])]))
         self.assertEqual(self.parser.parse("fun [ \n\n(fun2 42)]"), ss)
         
     def testListInAList(self):
         '''A list in a list.'''
         ss = StatementSequence()
-        ss.add(Call(Identifier("fun"), [CreateList(tuple([CreateList(tuple([String("Hello"), String("World")])), String("!")]))]))
+        ss.add(Call(Identifier("fun"), [CreateList([CreateList([String("Hello"), String("World")]), String("!")])]))
         self.assertEqual(self.parser.parse('fun [["Hello","World"], "!",]'), ss)
     
     def testFailList(self):

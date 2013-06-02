@@ -3,15 +3,13 @@ These classes are used for building an abstract syntax tree of Wrightscript.
 '''
 from core.functional import forall
 from Callable import Callable
+from ControlFlowEvent import *
+from itertools import imap, izip
+from core.wrightscript.RuntimeException import NotAnEntityDefinitionError,\
+    MissingFieldDeclerationError, FunctionAsRightValueError,\
+    WrongArgumentNumberError, NotAFunctionError, RuntimeException, Traceback
 
-
-# Exceptions
-class StatementNoOutOfBoundsException:
-    def __init__(self, no):
-        self._no = no
-        
-    def __repr__(self):
-        return "Statement " + self._no + " does not exist" 
+'''ATTENTION: More imports at the bottom of this file.'''
 
 class Node():
     def __eq__(self, other):
@@ -19,6 +17,18 @@ class Node():
         if self.__class__ != other.__class__:
             return False
         return self.__dict__ == other.__dict__
+    
+    def interp(self, env):
+        '''Evaluates this node with the given Environment env and returns the result of this evaluation.'''
+        raise NotImplementedError("Subclass Responsibility")
+
+# Exceptions
+class StatementNoOutOfBoundsException(Exception):
+    def __init__(self, no):
+        self._no = no
+        
+    def __str__(self):
+        return "Statement " + repr(self._no) + " does not exist" 
 
 ##
 # A named entity.
@@ -34,6 +44,9 @@ class Identifier(Node):
     
     def __hash__(self):
         return hash(self._name)
+    
+    def interp(self, env):
+        return env.get(self._name)
 
 class Literal(Node):
     pass
@@ -48,6 +61,9 @@ class Boolean(Literal):
     
     def __repr__(self):
         return 'Boolean(' + str(self._value) + ')'
+    
+    def interp(self, env):
+        return BooleanV(self._value)
 
 ##
 # A Number. Currently only positive integers are allowed.
@@ -63,6 +79,9 @@ class Number(Literal):
     
     def __hash__(self):
         return hash(self._value)
+    
+    def interp(self, env):
+        return NumberV(self._value)
 
 
 ##
@@ -79,6 +98,9 @@ class String(Literal):
     def __hash__(self):
         return hash(self._value)
     
+    def interp(self, env):
+        return StringV(self._value)
+    
 ##
 # Holds the statement sequence as a list.
 # 
@@ -88,7 +110,8 @@ class StatementSequence(Node):
         self._statements = []
         self._lineNoToPos = dict()
         self._pos = -1
-        self.resumeAdress = None
+        self._resumeAdress = None
+        self._resumeSequence = None
         
     ##
     # Adds a statement to the sequence.
@@ -96,12 +119,12 @@ class StatementSequence(Node):
     # @param lineno The line number. May be omitted for testing purpose.
     def add(self, node, lineno=-1):
         self._statements.append((node, lineno))
-        self._lineNoToPos[lineno] = self.pos
+        self._lineNoToPos[lineno] = len(self._statements) - 1
         
     ##
     # Rewinds the internal statement pointer.
     def rewind(self):
-        self._pos = 0
+        self._pos = -1
         
     ##
     # Returns the next sequence and increases
@@ -113,7 +136,7 @@ class StatementSequence(Node):
         if self._pos >= len(self._statements):
             return None
         else:
-            return self._statements(self._pos)
+            return self._statements[self._pos]
     
     ##
     # Returns the current statement. The usage
@@ -142,6 +165,13 @@ class StatementSequence(Node):
             raise StatementNoOutOfBoundsException(pos)
         self._pos = pos
     
+    def gotoLine(self, lineNo, resumeSequence, resumeAdress):
+        self.goto(self._lineNoToPos[lineNo])
+        self._resumeSequence = resumeSequence
+        self._resumeAdress = resumeAdress
+        
+    def resume(self, resumeAdress):
+        self.goto(resumeAdress)
     ##
     # Returns a dictionary of the statements. It contains
     # tuples of (statement, lineno).
@@ -161,7 +191,41 @@ class StatementSequence(Node):
         other_statements = [statement for (statement, _) in other.asList()]
         
         return my_statements == other_statements
+    
+    def interp(self, env):
+        stmt = self.next()
         
+        lastValue = NilV()
+        
+        # TODO the current goto implementation uses recursion, which may cause a StackOverflow, as
+        # python has no tail call recursion.
+        # Maybe propagate it to a higher level of interpretation?
+        # or have a look at some of the articles about this in python. Is this even possible with try...except?
+        # or disallow cross-statement jumps (so no jump to included scripts)
+        # or evaluate includes at parse time and rather bind the jumps to the pos than the lineNumber
+        try:
+            while not stmt is None:
+                (node, lineno) = stmt
+                try:
+                    lastValue = node.interp(env)
+                except RuntimeException, e:
+                    raise Traceback(e, lineno)
+                
+                stmt = self.next()
+        except ResumeEvent, e:
+            if self._resumeSequence is None:
+                # no Resume available, just proceed with execution
+                return self.interp(self, env)
+            else:
+                self._resumeSequence.resume(self._resumeAdress)
+                return self._resumeSequence.interp(env)
+        
+        except GotoEvent, e:
+            (lineNo, ss) = e.jumpPosition().value()
+            ss.gotoLine(lineNo, self, self._pos)
+            return self.interp(env)
+        
+        return lastValue
         
             
 
@@ -187,6 +251,9 @@ class Label(Node):
     
     def __hash__(self):
         return hash(self._name)
+    
+    def interp(self, env):
+        return self
 
 ##
 # Resume jumps to the last position of a goto statement.
@@ -209,6 +276,9 @@ class Label(Node):
 class Resume(Node):
     def __repr__(self):
         return 'RESUME'
+    
+    def interp(self, env):
+        raise ResumeEvent()
 
 ##
 # Goto points to a label identifier. When executed, the return
@@ -230,6 +300,9 @@ class Goto(Node):
     
     def __repr__(self):
         return 'GOTO ' + repr(self._target)
+    
+    def interp(self, env):
+        raise GotoEvent(env.get(self._target.name()))
 
 ##
 # If tests an argument (which may be the result of a function call)
@@ -262,6 +335,14 @@ class If(Node):
         if self.hasElseExpr():
             str = str + ' ELSE ' + repr(self._elseExpr)
         return str
+    
+    def interp(self, env):
+        if bool(self._testExpr.interp(env)):
+            return self._thenExpr.interp(env)
+        elif self.hasElseExpr():
+            return self._elseExpr.interp(env)
+        
+        return NilV()
 
 ##
 # A Call calls a function with the given arguments.  
@@ -281,6 +362,14 @@ class Call(Node):
     
     def __repr__(self):
         return repr(self._funExpr) + '(' + ', '.join(repr(arg) for arg in self._args) + ')'
+    
+    def interp(self, env):
+        fun = self._funExpr.interp(env)
+        
+        if not callable(fun):
+            raise NotAFunctionError(self._funExpr)
+        
+        return fun(map(lambda arg: arg.interp(env), self._args), env)
 
 ##
 # A function definition consists of a name, a list of
@@ -308,12 +397,34 @@ class Function(Node, Callable):
     
     def __repr__(self):
         return 'DEF ' + repr(self._name) + '(' + ', '.join(repr(param) for param in self._parameters) + ') {\n' + repr(self._body) + '\n}'
+    
+    def interp(self, env):
+        return self
+    
+    def __name__(self):
+        return self._name.name()
+    
+    def __call__(self, args, env):
+        if len(args) != len(self._parameters):
+            raise WrongArgumentNumberError(self, len(self._parameters), args)
+        
+        funEnv = Environment(env)
+        for boundId, arg in izip(self._parameters, args):
+            funEnv.set(boundId.name(), arg, local=True)
+        
+        try:
+            return self._body.interp(funEnv)
+        except ReturnEvent, e:
+            return e.value()
 
 ##
 # Stops execution of the current Script.
 class Exit(Node):
     def __repr__(self):
         return 'EXIT'
+    
+    def interp(self, env):
+        raise ExitEvent()
     
 ##
 # Jumps out of a function.
@@ -326,6 +437,12 @@ class Return(Node):
     
     def __repr__(self):
         return 'RETURN ' + repr(self._value)
+    
+    def interp(self, env):
+        if self._value is None:
+            raise ReturnEvent(None)
+        else:
+            raise ReturnEvent(self._value.interp(env))
     
 ##
 # A list over several (unevaluated) nodes. On interpretation, the list elements
@@ -341,13 +458,16 @@ class Return(Node):
 # prints 42.
 class CreateList(Node):
     def __init__(self, listOfNodes):
-        self._value = tuple(listOfNodes)
+        self._value = listOfNodes
         
     def list(self):
         return self._value
     
     def __repr__(self):
         return repr(self._value)
+    
+    def interp(self, env):
+        return List(imap(lambda elem: elem.interp(env), self._value))
     
 ##
 # An assignment assigns a variable a new value, e.g.
@@ -371,6 +491,14 @@ class Assignment(Node):
     
     def __repr__(self):
         return repr(self._lhs) + ' := ' + repr(self._rhs)
+    
+    def interp(self, env):
+        rhsV = self._rhs.interp(env)
+        if callable(rhsV):
+            raise FunctionAsRightValueError(rhsV.__name__)
+        env.set(self._lhs.name(), rhsV)
+        
+        return rhsV
 
 ##
 # An assignment where the left hand side is the
@@ -385,22 +513,6 @@ class FieldAssignment(Assignment):
     def __init__(self, fieldname, value):
         self._lhs = fieldname
         self._rhs = value
-
-
-##
-# Exception thrown when an entity's field is
-# accessed that does not exist.
-# TODO move that nearer to evaluation of actually created entities!
-class FieldNotDeclaredException(Exception):
-    ##
-    # @param entity String Name of the entity
-    # @param field String Name of the field
-    def __init__(self, entity, field):
-        self._entity = entity
-        self._field  = field
-    
-    def __repr__(self):
-        return 'Field ' + repr(self._field) + 'is not declared in entity ' + repr(self._entity)
 
 ##
 # Defines an entity. An entity is like a struct from c++. It
@@ -452,6 +564,18 @@ class EntityDefinition(Node):
         unsetFields = fieldsDeclared.difference(fieldsToSet)
         
         return forall(lambda field: not isinstance(self._fields[field], EntityDefinition.NoDefaultValue), unsetFields)
+    
+    def getMissingFields(self, listOfFieldsToSet):
+        '''Returns a list of missing fields.'''
+        fieldsToSet = set(listOfFieldsToSet)
+        fieldsDeclared = set(self._fields.keys())
+        
+        unsetFields = fieldsDeclared.difference(fieldsToSet)
+        
+        return filter(lambda field: isinstance(self._fields[field], EntityDefinition.NoDefaultValue), unsetFields)
+        
+    def interp(self, env):
+        return self
 
 ##
 # Creates an entity.
@@ -471,3 +595,39 @@ class CreateEntity(Node):
         
         def __repr__(self):
             return repr(self._template) + "{" + repr(self._assignments) + "}"
+        
+        def interp(self, env):
+            '''Creates an Entity from the dictionary within plus required defaults of
+            the definition.
+            
+            Note that the order in which the values are interpreted depends on
+            the underlying Python implementation. It is not wise to rely on the order, e.g.
+            SomeEntity {(fun1), (fun2)} may or may not call fun2 first. You should therefore
+            keep functions with side effects outside of an entity instantiation statement.'''
+            
+            entityDefinition = self._template.interp(env)
+            
+            if not isinstance(entityDefinition, EntityDefinition):
+                raise NotAnEntityDefinitionError()
+            
+            if not entityDefinition.isValidInstantiation(self._assignments.keys()):
+                raise MissingFieldDeclerationError(entityDefinition.name().name(),
+                                              entityDefinition.getMissingFields(self._assignments.keys()))
+            
+            fields = dict()
+            requiredDefaults = set(self._assignments.keys()).difference(set(entityDefinition.fields().keys()))
+            
+            for key in requiredDefaults:
+                fields[key.name()] = entityDefinition.fields()[key].interp(env)
+            
+            for identifier, value in self._assignments:
+                rhs = value.interp(env)
+                if callable(rhs):
+                    raise FunctionAsRightValueError(rhs.__name__)
+                fields[identifier.name()] = rhs 
+            
+            return Entity(fields)
+
+# Delayed import due to cyclic dependency          
+from Values import *
+from core.wrightscript.Environment import Environment

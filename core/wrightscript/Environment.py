@@ -3,7 +3,6 @@ from Values import Value, Entity, JumpPosition
 from AST import Function, Label, EntityDefinition, StatementSequence
 from SyntaxException import FunctionDefinitionError, LabelDefinitionError, EntityDefinitionError
 
-
 class Environment(object):
     '''
     An Environment captures the actual state of the program, including
@@ -88,7 +87,7 @@ class Environment(object):
            and will be shadowed.
            This is the expected setting for parameter bindings of function calls.'''
         
-        assert(value is Value)
+        assert isinstance(value, Value)
         
         self._bind(name, value, local)
         
@@ -109,7 +108,7 @@ class Environment(object):
             
             if isinstance(boundValue, JumpPosition):
                 raise AlreadyDefinedError(name, "Label")
-            if isinstance(boundValue, Function):
+            if callable(boundValue):
                 raise AlreadyDefinedError(name, "Function")
             
             # If binding is global, propagate binding one step down
@@ -119,13 +118,14 @@ class Environment(object):
             
         self._bindings[name] = value        
         
-    def addFunction(self, function):
+    def addFunction(self, function, functionName=None):
         '''Adds the given Function instance to the environment.
         
         Raises an FunctionDefinitionError when the name has already been defined (as a variable or otherwise).'''
-        assert(isinstance(function, Function))
+        assert callable(function)
         
-        functionName = function.name().name()
+        if functionName is None:
+            functionName = function.name().name()
         
         if self.isBound(functionName):
             raise FunctionDefinitionError(functionName, self.get(functionName))

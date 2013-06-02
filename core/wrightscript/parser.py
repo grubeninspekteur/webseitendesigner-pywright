@@ -90,8 +90,8 @@ class Parser():
             p[0] = p[1]
         
         def p_statements_multiple(p):
-            'statements : statements NEWLINE statement'
-            (node, lineno) = p[3]
+            'statements : statements NEWLINE optspace statement'
+            (node, lineno) = p[4]
             p[0] = p[1] # reuse statement sequence
             p[0].add(node, lineno)
             
@@ -313,11 +313,11 @@ class Parser():
         def p_list_containing(p):
             '''list : LBRACKET optspace listelems optspace RBRACKET
                     | LBRACKET optspace listelems optspace COMMA RBRACKET'''
-            p[0] = CreateList(tuple(p[3]))
+            p[0] = CreateList(p[3])
         
         def p_list_empty(p):
             'list : LBRACKET optspace RBRACKET'
-            p[0] = CreateList(tuple())
+            p[0] = CreateList([])
             
         def p_listelems_single(p):
             'listelems : arg'
