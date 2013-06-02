@@ -89,6 +89,7 @@ class Environment(object):
            This is the expected setting for parameter bindings of function calls.'''
         
         assert(value is Value)
+        
         self._bind(name, value, local)
         
     def _bind(self, name, value, local=False):
@@ -97,6 +98,11 @@ class Environment(object):
         
         Raises an InvalidRedeclarationError if the name has already been
         bound to a function or label.'''
+        
+        if value is None:
+            '''This Error happens when the return of a function that returns
+            nothing is assigned to a value.'''
+            raise TypeError("Tried to assign None to '" + name + "'")
         
         if self.isBound(name):
             boundValue = self.get(name)

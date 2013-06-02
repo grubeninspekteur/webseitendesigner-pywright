@@ -2,6 +2,7 @@
 These classes are used for building an abstract syntax tree of Wrightscript.
 '''
 from core.functional import forall
+from Callable import Callable
 
 
 # Exceptions
@@ -87,6 +88,7 @@ class StatementSequence(Node):
         self._statements = []
         self._lineNoToPos = dict()
         self._pos = -1
+        self.resumeAdress = None
         
     ##
     # Adds a statement to the sequence.
@@ -285,7 +287,7 @@ class Call(Node):
 # parameter identifiers and a StatementSequence.
 # Parameters will shadow variables outside
 # of the function's scope. 
-class Function(Node):
+class Function(Node, Callable):
     ##
     # @param name Identifier
     # @param parameters Listof(Identifier)
