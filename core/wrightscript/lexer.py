@@ -55,6 +55,7 @@ tokens = [
     'RBRACE',
     'COMMA',
     'ASSIGN',
+    'BINOP',
     'COMMENT',
     'MULTCOMMENT'
           ] + list(reserved.values())
@@ -71,6 +72,7 @@ t_RBRACE = r'}'
 t_PERIOD = r'\.'
 t_COMMA = r','
 t_ASSIGN = r':='
+t_BINOP = r'(=|(\+|-|\*|/|@|&|\^|:(?!=)|\|)+)'
 
 def t_COMMENT(t):
     r'(\s*)\#.*'

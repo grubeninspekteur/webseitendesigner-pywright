@@ -162,5 +162,8 @@ class Environment(object):
     def __nonzero__(self):
         '''Answers whether the environment contains any bindings.'''
         return bool(self._bindings) or bool(self._parent)
+    
+    def __repr__(self):
+        return repr(self._parent) + " + " + repr(self._bindings) 
         
         

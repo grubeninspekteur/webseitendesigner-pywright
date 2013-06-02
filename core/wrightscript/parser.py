@@ -43,7 +43,7 @@ class Parser():
     def hasErrors(self):
         return bool(self._errors)
 
-    def parse(self, script, env=Environment(), debug=False):
+    def parse(self, script, env=None, debug=False):
         '''String [Environment [Boolean]] -> StatementSequence
         
         Parses the given script and returns the
@@ -53,7 +53,14 @@ class Parser():
         
         Parallel execution not supported.'''
         self.resetErrors()
-        self.env = env
+        
+        # Workaround the strange behaviour of Python to execute default values at function definition time
+        # see http://docs.python.org/2.6/reference/compound_stmts.html#function-definitions
+        # previously, I used parse(self, script, env=Environment(), debug=False)
+        if env is None:
+            self.env = Environment()
+        else:
+            self.env = env
         return self._parser.parse(script, debug=debug)
             
     def buildParser(self):
@@ -69,6 +76,10 @@ class Parser():
         # As PLY does only track line numbers of tokens, we return tuples of (node, lineno)
         # for every statement we require a line number of and extract this information
         # when adding the statement to the StatementSequence.
+        
+        precedence = (
+            ('left', 'BINOP'), # Evaluate ambiguous binary operations from left to right, so that 2 - 3 * 2 = 2
+        )
         
         def p_start_emptyspace(p):
             'start : NEWLINE statements optspace'
@@ -147,6 +158,10 @@ class Parser():
             except FunctionDefinitionError, e:
                 self._errors.append(e)
         
+        def p_statement_fundef_binary(p):
+            'statement : DEF IDENTIFIER BINOP IDENTIFIER NEWLINE expressions NEWLINE ENDDEF'
+            p[0] = (Function(Identifier(p[3]), [Identifier(p[2]), Identifier(p[4])], p[6]), p.lineno(1))
+        
         def p_params_empty(p):
             'params : empty'
             p[0] = list()
@@ -168,14 +183,15 @@ class Parser():
         
         def p_entity_field_definitions_single(p):
             'entity_field_definitions : entity_field_definition'
-            p[0] = {p[1][0] : p[1][1]}
+            p[0] = dict()
+            p[0][p[1][0]] = p[1][1]
             
         def p_entity_field_definitions_multiple(p):
             'entity_field_definitions : entity_field_definitions NEWLINE entity_field_definition'
             p[0] = p[1] # reuse already defined dictionary
             key, value = p[3][0], p[3][1]
             if p[0].has_key(key):
-                raise SyntaxError("Invalid redeclaration of entity field " + repr(key))
+                raise SyntaxException("Invalid redeclaration of entity field " + repr(key))
             p[0][key] = value
             
         def p_entity_field_definition_nodefault(p):
@@ -262,6 +278,14 @@ class Parser():
             'arg : field_access'
             p[0] = p[1]
             
+        def p_arg_binary_expression(p):
+            'arg : binary_expression'
+            p[0] = p[1]
+            
+        def p_arg_binary_expression_parenthesis(p):
+            'arg : LPAREN binary_expression RPAREN'
+            p[0] = p[2]
+            
         def p_field_access_single(p):
             'field_access : IDENTIFIER PERIOD IDENTIFIER'
             p[0] = Identifier(p[1] + '.' + p[3])
@@ -326,7 +350,11 @@ class Parser():
                 raise SyntaxError("Invalid double set of entity field " + repr(key))
             
             p[0][key] = value
-        
+            
+        def p_binary_expression(p):
+            'binary_expression : arg BINOP arg'
+            p[0] = Call(Identifier(p[2]), [p[1], p[3]])
+                
         def p_optspace(p):
             '''optspace : empty
                         | NEWLINE'''
