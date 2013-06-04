@@ -109,7 +109,7 @@ class List(Value):
         return self._value
     
     def __repr__(self):
-        return '[' + ', '.join(str(elem) for elem in self._value) + ']'
+        return '[' + ', '.join(repr(elem) for elem in self._value) + ']'
     
 class Entity(Value):
     '''An Entity created by the CreateEntity expression.'''

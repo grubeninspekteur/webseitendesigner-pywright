@@ -1,5 +1,6 @@
 /*
-Example how labels may produce a stack overflow. I have to think of a solution.
+* A previous recursive solution for goto resulted in a stack overflow. The new Root
+* class prevents this.
 */
 
 a := 2000

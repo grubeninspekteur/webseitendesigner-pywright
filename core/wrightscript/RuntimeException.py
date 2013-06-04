@@ -103,10 +103,16 @@ class NotAFunctionError(RuntimeException):
     def __str__(self):
         return "Invalid call to non function " + repr(self._nonFunction)
     
+class WrightscriptAssertionError(RuntimeException):
+    '''May be raised by a custom assertion function.'''
+    
+    def __str__(self):
+        return "WrightscriptAssertionError"
+    
 class Traceback(RuntimeException):
     def __init__(self, exception, lineNo):
         self._exception = exception
         self._lineNo = lineNo
         
     def __str__(self):
-        return str(self._exception) + " at line " + repr(self._lineNo)
+        return str(self._exception) + " traced at line " + repr(self._lineNo)

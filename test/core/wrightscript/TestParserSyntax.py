@@ -37,6 +37,18 @@ class TestParserSyntax(unittest.TestCase):
     def _expectErrors(self, stringToParse, message=""):
         self.parser.parse(stringToParse)
         self.assertTrue(self.parser.hasErrors(), message)
+        
+    def assertNoParseErrors(self):
+        self.assertFalse(self.parser.hasErrors(), self.parser.errors())
+        
+    def testOneLiner(self):
+        '''Tests that a single line statement is recognized.'''
+        ss = StatementSequence()
+        ss.add(self._label('test'))
+        
+        input = 'label test'
+        
+        self.assertEqual(self.parser.parse(input), Root(ss))
     
     def testLabels(self):
         '''Tests some simple label, resume and goto expresssions.'''
@@ -54,7 +66,7 @@ class TestParserSyntax(unittest.TestCase):
         ss.add(self._textbox("Count: 3"))
         ss.add(self._textbox("FIN"))
         
-        self.assertEqual(self._parsed("labels"), ss)
+        self.assertEqual(self._parsed("labels"), Root(ss))
 
         self.assertFalse(self.parser.hasErrors())
         
@@ -70,9 +82,9 @@ class TestParserSyntax(unittest.TestCase):
                funstatements
                ))
         
-        funstatements.add(Return(Call(Identifier('add'), [Number(1), Identifier('x')])))
+        funstatements.add(Return(Call(Identifier('+'), [Number(1), Identifier('x')])))
         
-        self.assertEqual(self._parsed("fundef"), ss)
+        self.assertEqual(self._parsed("fundef"), Root(ss))
         
     def testConditionals(self):
         '''Tests several conditional expressions.'''
@@ -94,8 +106,44 @@ class TestParserSyntax(unittest.TestCase):
         
         parsed = self._parsed("conditional")
         
-        self.assertFalse(self.parser.hasErrors())
-        self.assertEqual(parsed, ss)
+        self.assertNoParseErrors()
+        self.assertEqual(parsed, Root(ss))
+    
+    def testConditionalAssignment(self):
+        '''Tests an assignment as then or else expr.'''
+        
+        input = "if true a := 1 else a := 0"
+        
+        ss = StatementSequence()
+        ss.add(If(Boolean(True), Assignment(Identifier("a"), Number(1)), Assignment(Identifier("a"), Number(0))))
+        
+        parsed = self.parser.parse(input)
+        self.assertNoParseErrors()
+        self.assertEqual(parsed, Root(ss))
+        
+    def testConditionalReturn(self):
+        '''Tests a conditional return inside a function definition.'''
+        funss = StatementSequence()
+        funss.add(If(Boolean(True), Return(Boolean(True)), Return(Boolean(False))))
+        
+        ss = StatementSequence()
+        ss.add(Function(Identifier("fun"), [], funss))
+        
+        input = '''def fun
+        if true return true else return false
+        enddef'''
+        
+        parsed = self.parser.parse(input)
+        self.assertNoParseErrors()
+        self.assertEqual(parsed, Root(ss))
+        
+    def testFailConditionalReturnOutsideFunction(self):
+        '''Tests that a return outside of a function definition is not allowed.'''
+        
+        input = "if true return true else return false"
+        
+        self.parser.parse(input)
+        self.assertTrue(self.parser.hasErrors())
         
     def testFailReturnOutsideFundef(self):
         '''A return statement should only be allowed inside a function definition.'''
@@ -127,7 +175,7 @@ class TestParserSyntax(unittest.TestCase):
         self.assertTrue(parserA.hasErrors())
         self.assertFalse(parserB.hasErrors())
         
-    def testLabelGoto(self):
+    def testFailLabelGotoInsideFunction(self):
         '''A label or goto statement inside a function is not allowed.'''
         
         self._parsed("fail_label_inside_function")
@@ -153,19 +201,19 @@ class TestParserSyntax(unittest.TestCase):
         '''Tests the empty list with some optional space.'''
         ss = StatementSequence()
         ss.add(Call(Identifier("fun"), [CreateList([])]))
-        self.assertEqual(self.parser.parse("fun [\n]"),ss)
+        self.assertEqual(self.parser.parse("fun [\n]"), Root(ss))
         
     def testListFuncall(self):
         '''Tests a list with one element, a funcall.'''
         ss = StatementSequence()
         ss.add(Call(Identifier("fun"), [CreateList([Call(Identifier("fun2"), [Number(42)])])]))
-        self.assertEqual(self.parser.parse("fun [ \n\n(fun2 42)]"), ss)
+        self.assertEqual(self.parser.parse("fun [ \n\n(fun2 42)]"), Root(ss))
         
     def testListInAList(self):
         '''A list in a list.'''
         ss = StatementSequence()
         ss.add(Call(Identifier("fun"), [CreateList([CreateList([String("Hello"), String("World")]), String("!")])]))
-        self.assertEqual(self.parser.parse('fun [["Hello","World"], "!",]'), ss)
+        self.assertEqual(self.parser.parse('fun [["Hello","World"], "!",]'), Root(ss))
     
     def testFailList(self):
         '''Tests several wrong list statements.'''
@@ -185,7 +233,7 @@ class TestParserSyntax(unittest.TestCase):
         '''Tests a simple assignment operation.'''
         ss = StatementSequence()
         ss.add(Assignment(Identifier('var'), Number(5)))
-        self.assertEqual(self.parser.parse('var := 5'), ss)
+        self.assertEqual(self.parser.parse('var := 5'), Root(ss))
         
     def testFailAssignment(self):
         '''Tests several failing assignments.'''
@@ -216,14 +264,14 @@ class TestParserSyntax(unittest.TestCase):
         ss.add(Call(Identifier("speaker"), [Identifier("Apollo")]))
         ss.add(self._textbox("What happened to my voice?"))
         
-        self.assertEqual(self._parsed("entity"), ss)
+        self.assertEqual(self._parsed("entity"), Root(ss))
         
     def testDoubleFieldAccess(self):
         '''Tests accessing a field of an entity inside a field of an entity; also fields as arguments of fuctions.'''
         ss = StatementSequence()
         ss.add(Call(Identifier("print"), [Identifier("Ema.mad.filename")]))
         
-        self.assertEqual(self.parser.parse("print Ema.mad.filename"), ss)
+        self.assertEqual(self.parser.parse("print Ema.mad.filename"), Root(ss))
         
     def testFailEntity(self):
         '''Tests failing entity definitions and field accessing.'''
@@ -247,8 +295,19 @@ class TestParserSyntax(unittest.TestCase):
         ss.add(Call(Identifier("fun4"), [Call(Identifier("+"), [Number(5), Number(5)]), Call(Identifier("fun"), [])]))
         ss.add(Function(Identifier(":+"), [Identifier("list"), Identifier("elem")], funss))
         
-        self.assertEqual(self._parsed("binary_ops"), ss)
-    
+        self.assertEqual(self._parsed("binary_ops"), Root(ss))
+        
+    def testRootUnequality(self):
+        '''Just a quick test that roots are uneqal if they don't contain the same values.'''
+        self.assertNotEqual(Root(Number(3)), Root(Number(4)))
+        
+    def testExcessiveWhitespace(self):
+        '''Tests the use of excessive whitespace.'''
+        self._parsed("whitespace")
+        self.assertFalse(self.parser.hasErrors(), self.parser.errors())
+
+#TODO write excessive whitespace test (optional indentation + newline at random positions) 
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
