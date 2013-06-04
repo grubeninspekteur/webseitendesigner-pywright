@@ -14,5 +14,5 @@ the function definition and bind it to the identifier.
 */
 
 def addone x
-  return (add 1 x)
+  return 1 + x
 enddef

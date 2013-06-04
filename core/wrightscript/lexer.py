@@ -111,6 +111,10 @@ def t_NUMBER(t):
     t.value = int(t.value)
     return t
 
+def t_newline_whitespace(t):
+    r'[ \t\n]+(?![^\n])'
+    t.lexer.lineno += t.value.count('\n')
+
 # NEWLINEs separate statements
 def t_NEWLINE(t):
     r'\n+'

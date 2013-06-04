@@ -139,6 +139,9 @@ class PList(Packer):
             else:
                 raise TypeError("Can only prepend tuples to Wrightscript lists")
             
+        def __str__(self):
+            return '(' + ','.join([str(elem) for elem in self])  + ')'
+            
     def unpack(self, node, env):
         if not isinstance(node, List):
             raise TypeError("Expected List as argument, got " + node.__class__.__name__)
@@ -225,7 +228,9 @@ class PythonFunction(Callable):
         return self
     
     def __call__(self, args, env):
-        
+        if env.isBound("DEBUG") and env.get("DEBUG") == BooleanV(True):
+            print self.fun.__name__ + " called with " + repr(args)
+            
         if len(args) != len(self.parameterPackers):
             raise WrongArgumentNumberError(self, len(self.parameterPackers), len(args))
         

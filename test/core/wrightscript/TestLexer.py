@@ -49,8 +49,7 @@ class Test(unittest.TestCase):
                      'NEWLINE',
                      'IDENTIFIER',
                      'NEWLINE',
-                     'IDENTIFIER',
-                     'NEWLINE'])
+                     'IDENTIFIER',])
         
     def testStrings(self):
         """Tests that strings are parsed correctly."""
@@ -152,7 +151,7 @@ class Test(unittest.TestCase):
         print phoenix.name # prints "Phoenix"'''
         
         typeList = ['NEWLINE', 'ENTITY', 'IDENTIFIER', 'NEWLINE', 'IDENTIFIER', 'ASSIGN', 'STRING', 'NEWLINE', 'ENDENTITY',
-                    'NEWLINE', 'NEWLINE', 'IDENTIFIER', 'ASSIGN', 'IDENTIFIER', 'LBRACE', 'IDENTIFIER', 'ASSIGN', 'STRING',
+                    'NEWLINE', 'IDENTIFIER', 'ASSIGN', 'IDENTIFIER', 'LBRACE', 'IDENTIFIER', 'ASSIGN', 'STRING',
                     'RBRACE', 'NEWLINE', 'IDENTIFIER', 'IDENTIFIER', 'PERIOD', 'IDENTIFIER']
         
         self.assertEqual(self.parseAsTypeList(input), typeList)
@@ -164,7 +163,7 @@ class Test(unittest.TestCase):
         typeList = ['IDENTIFIER', 'NUMBER', 'BINOP', 'NUMBER', 'NEWLINE', 'IF', 'BOOLEAN', 'BINOP', 'BOOLEAN']
         
         self.assertEqual(self.parseAsTypeList(input), typeList)
-        
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

@@ -29,7 +29,7 @@ class TestEnvironmentParsing(unittest.TestCase):
     
     def testLabels(self):
         '''Tests that labels are bound correctly.'''
-        statementSequence = self._parsed('labels')
+        statementSequence = self._parsed('labels').inner()
         self._assertLabel("pre", 9, statementSequence)
         self._assertLabel("main", 15, statementSequence)
         self._assertLabel("a", 18, statementSequence)
@@ -39,7 +39,7 @@ class TestEnvironmentParsing(unittest.TestCase):
         self._parsed('fundef')
         
         funstatements = StatementSequence()
-        funstatements.add(Return(Call(Identifier('add'), [Number(1), Identifier('x')])))
+        funstatements.add(Return(Call(Identifier('+'), [Number(1), Identifier('x')])))
         
         function = Function(
                Identifier('addone'),
@@ -63,6 +63,13 @@ class TestEnvironmentParsing(unittest.TestCase):
         self.parser.parse(getScriptFromFile('entity'))
         self.parser.parse(getScriptFromFile('labels'))
         self.assertRaises(UnboundNameError, self.parser.env.get, 'Character')
+        
+    def testBinOpDefinition(self):
+        '''Tests that a Binop function will be defined.'''
+        
+        self._parsed("binary_ops")
+        self.assertFalse(self.parser.hasErrors())
+        self.assertTrue(isinstance(self.env.get(":+"), Function))
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

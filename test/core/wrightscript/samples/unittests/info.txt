@@ -1,0 +1,2 @@
+The Scripts in this folder are unittests written in Wrightscript itself.
+Of course the commands used all have to be defined.

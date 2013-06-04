@@ -1,5 +1,16 @@
 '''
 These classes are used for building an abstract syntax tree of Wrightscript.
+
+TODO How can saving a game be realized? A normal sequence should be easy
+(raise an event containing current sequence + position), but what about
+funtions and their return points? Calls inside calls? etc. At worst change
+interp nesting style to use a callback instead (continuations style).
+
+"One can think of a first-class continuation as saving the state of the program."
+See: http://en.wikipedia.org/wiki/Continuation
+
+-- However implementation of continuations in python which has no tail calls
+may be difficult (inifinite nesting of calls).
 '''
 from core.functional import forall
 from Callable import Callable
@@ -9,7 +20,8 @@ from core.wrightscript.RuntimeException import NotAnEntityDefinitionError,\
     MissingFieldDeclerationError, FunctionAsRightValueError,\
     WrongArgumentNumberError, NotAFunctionError, RuntimeException, Traceback
 
-'''ATTENTION: More imports at the bottom of this file.'''
+'''ATTENTION: More imports at the bottom of this file.
+TODO resolve circular import'''
 
 class Node():
     def __eq__(self, other):
@@ -29,6 +41,41 @@ class StatementNoOutOfBoundsException(Exception):
         
     def __str__(self):
         return "Statement " + repr(self._no) + " does not exist" 
+
+class Root(Node):
+    def __init__(self, statementSequence):
+        self._inner = statementSequence
+        
+    def inner(self):
+        return self._inner
+    
+    def __repr__(self):
+        return "ROOT\n" + repr(self._inner)
+    
+    def interp(self, env):
+        resumeSequence = None
+        resumeAdress   = None
+        
+        currentSequence = self._inner
+        
+        while True:
+            try:
+               return currentSequence.interp(env)
+            except ResumeEvent, e:
+                if resumeSequence is None:
+                    # no Resume available, just proceed with execution
+                    continue
+                else:
+                    resumeSequence.resume(resumeAdress)
+                    continue
+            
+            except GotoEvent, e:
+                (lineNo, ss) = e.jumpPosition().value()
+                resumeSequence = currentSequence
+                resumeAdress = currentSequence.pos()
+                ss.gotoLine(lineNo)
+                currentSequence = ss
+                continue
 
 ##
 # A named entity.
@@ -110,8 +157,6 @@ class StatementSequence(Node):
         self._statements = []
         self._lineNoToPos = dict()
         self._pos = -1
-        self._resumeAdress = None
-        self._resumeSequence = None
         
     ##
     # Adds a statement to the sequence.
@@ -165,10 +210,8 @@ class StatementSequence(Node):
             raise StatementNoOutOfBoundsException(pos)
         self._pos = pos
     
-    def gotoLine(self, lineNo, resumeSequence, resumeAdress):
+    def gotoLine(self, lineNo):
         self.goto(self._lineNoToPos[lineNo])
-        self._resumeSequence = resumeSequence
-        self._resumeAdress = resumeAdress
         
     def resume(self, resumeAdress):
         self.goto(resumeAdress)
@@ -196,34 +239,15 @@ class StatementSequence(Node):
         stmt = self.next()
         
         lastValue = NilV()
-        
-        # TODO the current goto implementation uses recursion, which may cause a StackOverflow, as
-        # python has no tail call recursion.
-        # Maybe propagate it to a higher level of interpretation?
-        # or have a look at some of the articles about this in python. Is this even possible with try...except?
-        # or disallow cross-statement jumps (so no jump to included scripts)
-        # or evaluate includes at parse time and rather bind the jumps to the pos than the lineNumber
-        try:
-            while not stmt is None:
-                (node, lineno) = stmt
-                try:
-                    lastValue = node.interp(env)
-                except RuntimeException, e:
-                    raise Traceback(e, lineno)
+
+        while not stmt is None:
+            (node, lineno) = stmt
+            try:
+                lastValue = node.interp(env)
+            except RuntimeException, e:
+                raise Traceback(e, lineno)
                 
-                stmt = self.next()
-        except ResumeEvent, e:
-            if self._resumeSequence is None:
-                # no Resume available, just proceed with execution
-                return self.interp(self, env)
-            else:
-                self._resumeSequence.resume(self._resumeAdress)
-                return self._resumeSequence.interp(env)
-        
-        except GotoEvent, e:
-            (lineNo, ss) = e.jumpPosition().value()
-            ss.gotoLine(lineNo, self, self._pos)
-            return self.interp(env)
+            stmt = self.next()
         
         return lastValue
         
@@ -405,6 +429,9 @@ class Function(Node, Callable):
         return self._name.name()
     
     def __call__(self, args, env):
+        if env.isBound("DEBUG") and env.get("DEBUG") == BooleanV(True):
+            print self._name.name() + " called with " + repr(args)
+        
         if len(args) != len(self._parameters):
             raise WrongArgumentNumberError(self, len(self._parameters), args)
         
@@ -413,6 +440,9 @@ class Function(Node, Callable):
             funEnv.set(boundId.name(), arg, local=True)
         
         try:
+            # TODO create a special function statement sequence class that does rewind automatically
+            # on each interp and disallows resume + goto
+            self._body.rewind()
             return self._body.interp(funEnv)
         except ReturnEvent, e:
             return e.value()

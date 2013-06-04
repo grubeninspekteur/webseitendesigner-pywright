@@ -87,7 +87,7 @@ class Environment(object):
            and will be shadowed.
            This is the expected setting for parameter bindings of function calls.'''
         
-        assert isinstance(value, Value)
+        #assert isinstance(value, Value)
         
         self._bind(name, value, local)
         
@@ -96,12 +96,20 @@ class Environment(object):
         given name to the given value.
         
         Raises an InvalidRedeclarationError if the name has already been
-        bound to a function or label.'''
+        bound to a function or label.
+        
+        If local is True, an already set variable of a higher scope will not be modified
+        and will be shadowed.
+        This is the expected setting for parameter bindings of function calls.'''
         
         if value is None:
             '''This Error happens when the return of a function that returns
             nothing is assigned to a value.'''
             raise TypeError("Tried to assign None to '" + name + "'")
+        
+        if local:
+            self._bindings[name] = value
+            return
         
         if self.isBound(name):
             boundValue = self.get(name)
@@ -112,11 +120,13 @@ class Environment(object):
                 raise AlreadyDefinedError(name, "Function")
             
             # If binding is global, propagate binding one step down
-            if not local and not self._bindings.has_key(name):
-                self._parent._bind(self, name, value)
-            # else: bind locally, as done below for the case of a previously unbound name
-            
-        self._bindings[name] = value        
+            if not self._bindings.has_key(name):
+                self._parent._bind(name, value)
+                return      
+        
+        # Variable not previously defined or in this environment
+        self._bindings[name] = value
+        
         
     def addFunction(self, function, functionName=None):
         '''Adds the given Function instance to the environment.
@@ -164,6 +174,6 @@ class Environment(object):
         return bool(self._bindings) or bool(self._parent)
     
     def __repr__(self):
-        return repr(self._parent) + " + " + repr(self._bindings) 
+        return "Environment: " + repr(self._bindings) + "Parent " + repr(self._parent)
         
         
