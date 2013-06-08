@@ -1,16 +1,57 @@
 '''
 These classes are used for building an abstract syntax tree of Wrightscript.
 
-TODO How can saving a game be realized? A normal sequence should be easy
-(raise an event containing current sequence + position), but what about
-funtions and their return points? Calls inside calls? etc. At worst change
-interp nesting style to use a callback instead (continuations style).
+TODO To enable save games, have to implement continuation passing style.
 
 "One can think of a first-class continuation as saving the state of the program."
 See: http://en.wikipedia.org/wiki/Continuation
 
--- However implementation of continuations in python which has no tail calls
-may be difficult (inifinite nesting of calls).
+How:
+1. Let a stack be a new parameter to interp.
+2. Let "atomic function" denote a function that is not a method of an AST node and
+   does itself call only atomic functions.
+   
+Intialization:
+1. Push the method "interpNext" of the outermost statement sequence to the stack.
+2. Let returnValue := None
+
+Algorithm of Root:
+While topF := stack.pop is not None
+  returnValue := topF(returnValue)
+
+If Goto/Resume Event received
+  clear stack
+  Push interpNext of the statement sequence saved in the event to the stack
+  continue loop
+
+How AST nodes work:
+1. Nodes are not allowed to call non atomic functions themselves.
+2. If a node method wants to call a non atomic function, it has to push a function to the stack
+   that takes one parameter (the return value of the last interpreted function).
+3. If a node method not only wants to call that function but also requires the result of it,
+   it has to push a method of itself to the stack before pushing the function it wants to call.
+4. If a node wants to call multiple non atomic functions, it has to split up the calls into
+   single ones like in 3. State can be transferred by lambda closures. So e.g. a method that
+   interprets a lhs and rhs of an expression would do:
+   push functools.partial(self.lhs_processed, env, stack)
+   push lambda _: lhs.interp(env,stack)
+-- self.lhs_processed(env,stack,x):
+      push functools.partial(self.evaluate, env, stack, x)
+      push lambda _: rhs.interp(env,stack)
+-- self.rhs_evaluate(env,stack,x,y):
+   # actual calculation of result
+   # no further pushing, caller will automatically get the result
+   
+If the environment is not wrapped (as it is for realizing scoping in AST.Call), the functions
+can be nested to have a clearer interface:
+def self.interp(env,stack)
+  def lhs(x):
+    def rhs(y):
+      # actual calculation
+    push rhs
+    push lambda _: lsh.interp(env,stack)
+  push lhs
+  push lambda _: rhs.interp(env,stack)
 '''
 from core.functional import forall
 from Callable import Callable
@@ -60,7 +101,7 @@ class Root(Node):
         
         while True:
             try:
-               return currentSequence.interp(env)
+                return currentSequence.interp(env)
             except ResumeEvent, e:
                 if resumeSequence is None:
                     # no Resume available, just proceed with execution
@@ -645,18 +686,20 @@ class CreateEntity(Node):
                                               entityDefinition.getMissingFields(self._assignments.keys()))
             
             fields = dict()
-            requiredDefaults = set(self._assignments.keys()).difference(set(entityDefinition.fields().keys()))
+            
+            # retrieve list of fields we need the default value
+            requiredDefaults = set(entityDefinition.fields().keys()).difference(self._assignments.keys())
             
             for key in requiredDefaults:
                 fields[key.name()] = entityDefinition.fields()[key].interp(env)
             
-            for identifier, value in self._assignments:
+            for identifier, value in self._assignments.iteritems():
                 rhs = value.interp(env)
                 if callable(rhs):
                     raise FunctionAsRightValueError(rhs.__name__)
                 fields[identifier.name()] = rhs 
             
-            return Entity(fields)
+            return Entity(entityDefinition.name().name(), fields)
 
 # Delayed import due to cyclic dependency          
 from Values import *
