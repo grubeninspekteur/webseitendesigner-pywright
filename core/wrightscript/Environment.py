@@ -29,7 +29,7 @@ class Environment(object):
         
         if "." in name:
             (entityName, fieldName) = name.split(".", 1)
-            entity = self.get(self, entityName)
+            entity = self.get(entityName)
             return self.getField(entity, fieldName)
         
         value = self._bindings.get(name, None)
@@ -60,6 +60,23 @@ class Environment(object):
         else:
             return fieldValue
         
+    def setField(self, entity, fieldName, value):
+        '''Entity, String -> AST.Node
+        
+        Returns the value of a field of an entity. Unlike a direct entity.get(),
+        this function takes care of nested entity dereferencing.'''
+        if not isinstance(entity, Entity):
+            raise InvalidFieldAccessError(entity, fieldName)
+        
+        # Check for nested entity dereferencing (e.g. Ema.mad.filename)
+        parts = fieldName.split(".", 1)
+        
+        if len(parts) > 1:
+            fieldValue = entity.get(parts[0])
+            return self.setField(fieldValue, parts[1], value)
+        else:
+            entity.set(parts[0], value)
+        
     def isBound(self, name):
         '''String -> Boolean
         
@@ -84,10 +101,15 @@ class Environment(object):
            that the name is not taken by anything, including variables.
            
            If local is True, an already set variable of a higher scope will not be modified
-           and will be shadowed.
+           and will be shadowed. Local has no influence on fields (they depend on the higher scope).
            This is the expected setting for parameter bindings of function calls.'''
         
         #assert isinstance(value, Value)
+        
+        if "." in name:
+            (entityName, fieldName) = name.split(".", 1)
+            entity = self.get(entityName)
+            return self.setField(entity, fieldName, value)
         
         self._bind(name, value, local)
         

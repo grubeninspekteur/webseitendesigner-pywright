@@ -134,8 +134,6 @@ class Entity(Value):
         return self._value[index]
     
     def set(self, index, value):
-        if not self._value.has_key(index):
-            raise UnknownFieldError(self, index)
         self._value[index] = value
 
 class JumpPosition(Value):
